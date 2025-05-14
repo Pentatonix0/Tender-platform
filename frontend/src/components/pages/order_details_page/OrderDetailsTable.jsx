@@ -122,13 +122,13 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                                     <div className="flex justify-center text-white text-xs">
                                         Your price is the best!
                                     </div>
+                                ) : item.price.order_item.recommended_price !==
+                                  null ? (
+                                    <div className="flex justify-center text-white text-xs">
+                                        {`Recommended price: ${item.price.order_item.recommended_price}`}
+                                    </div>
                                 ) : (
-                                    item.price.order_item.recommended_price !==
-                                        undefined && (
-                                        <div className="flex justify-center text-white text-xs">
-                                            {`Recommended price: ${item.price.order_item.recommended_price}`}
-                                        </div>
-                                    )
+                                    <></>
                                 ))}
                         </div>
                     ) : (
