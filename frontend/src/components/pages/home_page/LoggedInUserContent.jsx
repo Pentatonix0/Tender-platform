@@ -29,7 +29,7 @@ const LoggedInUserContent = () => {
     };
 
     useEffect(() => {
-        getAllOrders(); // Загружаем данные при монтировании компонента УБРАЛ []
+        getAllOrders(); // Загружаем данные при монтировании компонен
     }, []);
     return (
         <div className="flex flex-col max-w-7xl mx-auto px-20 py-8">

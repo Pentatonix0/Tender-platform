@@ -34,34 +34,6 @@ const ActiveOrderContent = ({ data = [] }) => {
         defaultValues: { title, description },
     });
 
-    useEffect(() => {
-        const fetchAllPersonalOrders = async () => {
-            try {
-                const response = await fetch(
-                    `/api/order/get_all_personal_orders?${id}`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token.access_token}`,
-                        },
-                    }
-                );
-
-                if (!response.ok) {
-                    throw new Error('Failed to fetch orders');
-                }
-
-                const data = await response.json();
-                setOrders(data);
-                setLoading(false);
-            } catch (err) {
-                setError(err.message);
-            }
-        };
-        if (status.code === 205) {
-            fetchAllPersonalOrders();
-        }
-    }, []);
-
     const onSubmit = async (formData) => {
         try {
             const response = await axios.put(
