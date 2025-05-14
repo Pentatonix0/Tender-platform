@@ -1,0 +1,25 @@
+Client-side general statuses
+
+100 - new order
+101 - participating, open to editing
+102 - participating, close to editing
+103 - bidding, open to editing
+104 - participating in bidding, open to editing
+105 - have not participated in bidding, close to editing
+106 - have participated in bidding, close to editing
+107 - personal orders created
+111 - suspended from the order
+
+
+Admin-side statuses
+
+200 - order created, active
+203 - bidding
+205 - finished, personal orders created
+207 - archived
+
+
+Client-side personal statuses
+
+300 - personal order created
+305 - personal order done

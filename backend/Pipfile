@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-restx = "*"
+autopep8 = "*"
+requests = "*"
+flask-cors = "*"
+pandas = "*"
+xlrd = "*"
+openpyxl = "*"
+apscheduler = "*"
+pytz = "*"
+flask-migrate = "*"
+flask-jwt-extended = "*"
+python-decouple = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"

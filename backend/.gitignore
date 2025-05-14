@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+dist/
+build/
+*.log
+
+# Flask
+instance/
+*.db
+*.sqlite3
+
+# dotenv
+.env
+.env.*
+
+# PyCharm / IntelliJ IDEA
+.idea/

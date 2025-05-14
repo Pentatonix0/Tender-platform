@@ -1,0 +1,49 @@
+{
+    "name": "frontend",
+    "version": "0.1.0",
+    "private": true,
+    "dependencies": {
+        "axios": "^1.8.4",
+        "react": "^18.3.1",
+        "react-datasheet": "^1.4.12",
+        "react-dom": "^18.3.1",
+        "react-hook-form": "^7.55.0",
+        "react-icons": "^5.5.0",
+        "react-router-dom": "^7.5.0",
+        "react-select": "^5.10.1",
+        "react-toastify": "^11.0.5",
+        "react-token-auth": "^2.3.8"
+    },
+    "proxy": "http://localhost:5000",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "lint": "eslint .",
+        "preview": "vite preview"
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^4.4.0",
+        "autoprefixer": "^10.4.21",
+        "postcss": "^8.5.3",
+        "tailwindcss": "^3.4.17",
+        "vite": "^6.2.6"
+    }
+}

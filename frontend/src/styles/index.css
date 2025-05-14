@@ -1,0 +1,92 @@
+/* @import url("https://fonts.googleapis.com/css2?family=Jacquard+24&family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&family=Tomorrow:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"); */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: #000;
+}
+body {
+    font-family: 'IBM Plex Sans', serif;
+    font-weight: 400;
+    font-size: 18px;
+    color: #000;
+}
+
+@keyframes spin-fast {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse-glow {
+    0%,
+    100% {
+        opacity: 0.9;
+        transform: scale(0.95);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+        box-shadow: 0 0 20px 4px rgba(255, 94, 0, 0.5);
+    }
+}
+
+@keyframes pulse-slow {
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.animate-spin-fast {
+    animation: spin-fast 0.8s linear infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.shadow-glow-xl {
+    filter: drop-shadow(0 0 12px rgba(255, 115, 0, 0.4));
+}
+
+/* Анимации переходов (обновлённая версия) */
+.page-transition-enter {
+    opacity: 0;
+}
+
+.page-transition-enter-active {
+    opacity: 1;
+    transition: opacity 300ms ease-in-out;
+}
+
+.page-transition-exit {
+    opacity: 1;
+}
+
+.page-transition-exit-active {
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+}
+
+/* Сохраняем пространство для анимации */
+.transition-group {
+    position: relative;
+}
+
+.page-transition {
+    position: absolute;
+    width: 100%;
+}
