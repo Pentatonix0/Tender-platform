@@ -256,16 +256,42 @@ class UnableParticipant(Resource):
     @jwt_required()
     @admin_required
     def post(self):
-        pass
+        try:
+
+            participant_id = request.args.get('participant_id')
+            if not participant_id:
+                return {"message": "Id is required"}, 400
+            OrderService.unable_participant(participant_id)
+            return {"status": "success", "message": "Participant successfully unabled"}, 200
+        except Exception as ex:
+            print(ex)
+            responce_object = {
+                "status": "fail",
+                "message": "Try again"
+            }
+            return responce_object, 500
 
 
 @order_ns.route('/return_participant')
-class UnableParticipant(Resource):
+class ReturnParticipant(Resource):
     @order_ns.doc(params={'id': 'Id of the participant'})
     @jwt_required()
     @admin_required
     def post(self):
-        pass
+        try:
+            participant_id = request.args.get('participant_id')
+            if not participant_id:
+                return {"message": "Id is required"}, 400
+            OrderService.return_participant(participant_id)
+            return {"status": "success", "message": "Participant successfully unabled"}, 200
+        except Exception as ex:
+            print(ex)
+            responce_object = {
+                "status": "fail",
+                "message": "Try again"
+            }
+            return responce_object, 500
+
 
 @order_ns.route('/get_all_order_personal_orders')
 class GetAllPersonalOrders(Resource):
@@ -286,7 +312,6 @@ class GetAllPersonalOrders(Resource):
                 "message": "Try again"
             }
             return responce_object, 400
-
 
 
 @order_ns.route('/download_personal_order')
@@ -319,3 +344,32 @@ class DownloadPersonalOrder(Resource):
             return responce_object, 400
 
 
+@order_ns.route('/download_all_personal_orders')
+class DownloadAllPersonalOrders(Resource):
+    @order_ns.doc(params={'id': 'Id of the personal order'})
+    @order_ns.doc(params={'filename': 'Name of the file'})
+    @jwt_required()
+    @admin_required
+    def get(self):
+        try:
+            order_id = request.args.get('order_id')
+            filename = request.args.get('filename')
+            if not order_id:
+                return {"message": "Id is required"}, 400
+            if not filename:
+                return {"message": "Filename is required"}, 400
+
+            file_stream = OrderService.get_all_personal_orders_excel(order_id)
+            return send_file(
+                file_stream,
+                as_attachment=True,
+                download_name=f'{filename}_all_personal_orders.xlsx',
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        except Exception as ex:
+            print(ex)
+            responce_object = {
+                "status": "fail",
+                "message": "Try again"
+            }
+            return responce_object, 500

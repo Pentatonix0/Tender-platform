@@ -175,6 +175,7 @@ const ActiveOrderContent = ({ data = [] }) => {
                     </h3>
                     <OrderAdminTable data={order_items} showText={false} />
                     <OrderActions
+                        title={title}
                         status={status}
                         orderId={id}
                         token={token}

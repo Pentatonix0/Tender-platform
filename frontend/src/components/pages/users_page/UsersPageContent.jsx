@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Loading from '../../common/universal_components/Loading';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const UsersPageContent = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
     const getAllUsers = async () => {
         const token = JSON.parse(localStorage.getItem('REACT_TOKEN_AUTH_KEY'));
@@ -16,8 +22,10 @@ const UsersPageContent = () => {
                 },
             });
             setUsers(response.data);
+            console.log(response.data);
         } catch (error) {
             console.error('Error fetching users:', error);
+            toast.error('Ошибка при загрузке пользователей');
         } finally {
             setLoading(false);
         }
@@ -40,20 +48,106 @@ const UsersPageContent = () => {
             });
             if (response.status === 200) {
                 setUsers(users.filter((user) => user.username !== username));
+                toast.success(`Пользователь ${username} успешно удален`, {
+                    position: 'top-right',
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: 'dark',
+                });
             }
         } catch (error) {
             console.error('Error deleting user:', error);
+            toast.error('Ошибка при удалении пользователя', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
         }
+    };
+
+    const handleChangePassword = async () => {
+        if (newPassword.length < 8) {
+            setErrorMessage('Пароль должен содержать не менее 8 символов');
+            toast.error('Пароль должен содержать не менее 8 символов', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+            return;
+        }
+
+        const token = JSON.parse(localStorage.getItem('REACT_TOKEN_AUTH_KEY'));
+        try {
+            const response = await axios.put(
+                `api/users/change_password_admin?user_id=${selectedUser.id}`,
+                { password: newPassword },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+            if (response.status === 200) {
+                setShowModal(false);
+                setNewPassword('');
+                setErrorMessage('');
+                toast.success('Пароль успешно изменен', {
+                    position: 'top-right',
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: 'dark',
+                });
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            setErrorMessage('Ошибка при изменении пароля');
+            toast.error('Ошибка при изменении пароля', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        }
+    };
+
+    const openModal = (user) => {
+        setSelectedUser(user);
+        setShowModal(true);
+        setNewPassword('');
+        setErrorMessage('');
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setSelectedUser(null);
+        setNewPassword('');
+        setErrorMessage('');
     };
 
     useEffect(() => {
         getAllUsers();
     }, []);
 
-    // Упрощенная функция для переноса длинного текста
     const formatLongText = (text) => {
         if (!text) return '';
-        // Просто разрешаем тексту переноситься естественным образом
         return text;
     };
 
@@ -90,6 +184,9 @@ const UsersPageContent = () => {
                                                 Компания
                                             </th>
                                             <th className="px-6 py-3 text-left text-base font-medium whitespace-nowrap">
+                                                Email
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-base font-medium whitespace-nowrap">
                                                 Действия
                                             </th>
                                         </tr>
@@ -107,6 +204,9 @@ const UsersPageContent = () => {
                                                         user.company
                                                     )}
                                                 </td>
+                                                <td className="px-6 py-4 text-base max-w-xs break-words">
+                                                    {formatLongText(user.email)}
+                                                </td>
                                                 <td className="px-6 py-4 text-base whitespace-nowrap">
                                                     <button
                                                         onClick={() =>
@@ -114,9 +214,17 @@ const UsersPageContent = () => {
                                                                 user.username
                                                             )
                                                         }
-                                                        className="w-32 h-10 bg-red-600 text-white text-base px-4 py-2 rounded-lg hover:bg-red-700 transition duration-200"
+                                                        className="w-32 h-10 bg-red-600 text-white text-base px-4 py-2 rounded-lg hover:bg-red-700 transition duration-200 mr-2"
                                                     >
                                                         Удалить
+                                                    </button>
+                                                    <button
+                                                        onClick={() =>
+                                                            openModal(user)
+                                                        }
+                                                        className="w-40 h-10 bg-blue-600 text-white text-base px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200"
+                                                    >
+                                                        Изменить пароль
                                                     </button>
                                                 </td>
                                             </tr>
@@ -126,6 +234,44 @@ const UsersPageContent = () => {
                             </div>
                         )}
                     </div>
+
+                    {showModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-[#222224] p-6 rounded-3xl border border-1 border-gray-600 w-96">
+                                <h2 className="text-xl text-white mb-4">
+                                    Изменить пароль для {selectedUser?.username}
+                                </h2>
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) =>
+                                        setNewPassword(e.target.value)
+                                    }
+                                    placeholder="Новый пароль"
+                                    className="w-full p-2 mb-4 bg-gray-800 text-white rounded-lg border border-gray-600"
+                                />
+                                {errorMessage && (
+                                    <div className="text-red-500 text-sm mb-4">
+                                        {errorMessage}
+                                    </div>
+                                )}
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={closeModal}
+                                        className="w-24 h-10 bg-gray-600 text-white text-base px-4 py-2 rounded-lg hover:bg-gray-700 mr-2 transition duration-200"
+                                    >
+                                        Отмена
+                                    </button>
+                                    <button
+                                        onClick={handleChangePassword}
+                                        className="w-24 h-10 bg-blue-600 text-white text-base px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 flex justify-center"
+                                    >
+                                        Сохранить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

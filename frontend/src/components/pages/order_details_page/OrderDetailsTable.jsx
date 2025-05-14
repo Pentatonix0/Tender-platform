@@ -4,6 +4,7 @@ import CommentModal from './CommentModal';
 
 const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
     const inputRefs = useRef([]);
+    const status = data.status;
     const [activeCommentItem, setActiveCommentItem] = useState(null);
     const [showCommentModal, setShowCommentModal] = useState(false);
     const [comments, setComments] = useState(() => {
@@ -56,10 +57,17 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
         inputRefs.current[0]?.focus();
     }, []);
 
-    const renderTableRow = (item, index, isEditable = false) => {
+    const renderTableRow = (item, index, status) => {
         const itemId = item.price?.order_item?.id || index;
         const hasComment = !!comments[itemId];
         const isBestPrice = item.is_the_best_price;
+        const isEditable =
+            status.code === 100 ||
+            status.code === 101 ||
+            status.code === 103 ||
+            status.code === 104;
+        const isShowRecommendedPrice =
+            status.code === 103 || status.code === 104;
 
         // Условные классы для фона ячейки Price при isEditable
         const priceCellBgClass = isEditable
@@ -69,7 +77,7 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                 ? 'bg-[#FAED27]/50'
                 : ''
             : '';
-
+        console.log(item);
         return (
             <tr key={index} className="animate-fade-in">
                 <td className="border p-2 text-gray-200 max-w-[512px]">
@@ -109,18 +117,19 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                                 }
                                 ref={(el) => (inputRefs.current[index] = el)}
                             />
-                            {isBestPrice ? (
-                                <div className="flex justify-center text-white text-xs">
-                                    Your price is the best!
-                                </div>
-                            ) : (
-                                item.price.order_item.recommended_price !==
-                                    undefined && (
+                            {isShowRecommendedPrice &&
+                                (isBestPrice ? (
                                     <div className="flex justify-center text-white text-xs">
-                                        {`Recommended price: ${item.price.order_item.recommended_price}`}
+                                        Your price is the best!
                                     </div>
-                                )
-                            )}
+                                ) : (
+                                    item.price.order_item.recommended_price !==
+                                        undefined && (
+                                        <div className="flex justify-center text-white text-xs">
+                                            {`Recommended price: ${item.price.order_item.recommended_price}`}
+                                        </div>
+                                    )
+                                ))}
                         </div>
                     ) : (
                         <div className="text-gray-200">
@@ -196,7 +205,7 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                         </thead>
                         <tbody>
                             {data.last_prices.map((last_price, index) =>
-                                renderTableRow(last_price, index, true)
+                                renderTableRow(last_price, index, status)
                             )}
                         </tbody>
                     </table>
@@ -237,7 +246,7 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                         </thead>
                         <tbody>
                             {data.last_prices.map((last_price, index) =>
-                                renderTableRow(last_price, index)
+                                renderTableRow(last_price, index, status)
                             )}
                         </tbody>
                     </table>

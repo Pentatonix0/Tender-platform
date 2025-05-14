@@ -11,6 +11,7 @@ import { toast } from 'react-toastify';
 import { statusDictionary } from '../../../constants/StatusDictionary';
 
 const OrderActions = ({
+    title,
     status,
     orderId,
     token,
@@ -179,7 +180,41 @@ const OrderActions = ({
         }
     };
 
-    const handleRequestPersonalOrders = async () => {};
+    const handleDownloadAllPersonalOrders = async () => {
+        const key = 'allPersonalOrders';
+        try {
+            const response = await axios.get(
+                `/api/order/download_all_personal_orders?order_id=${orderId}&filename=${title}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                    responseType: 'blob',
+                }
+            );
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${title}_all_personal_orders.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error fetching summary:', error);
+            toast.error('Не удалось скачать сводку', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } finally {
+            setButtonLoading(key, false);
+        }
+    };
 
     const handleStartBidding = () => {
         setIsBiddingModalOpen(true);
@@ -241,6 +276,79 @@ const OrderActions = ({
     };
 
     const handleAddParticipant = () => {};
+    const handleUnableParticipant = async (participant_id) => {
+        console.log(token);
+        try {
+            const response = await axios.post(
+                `/api/order/unable_participant?participant_id=${participant_id}`,
+                {},
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+            if (response.status === 200) {
+                toast.success('Участник успешно отстранён', {
+                    position: 'top-right',
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: 'dark',
+                });
+            }
+        } catch (error) {
+            console.error('Error unable participant:', error);
+            toast.error('Не удалось отстранить участника', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        }
+    };
+    const handleReturnParticipant = async (participant_id) => {
+        try {
+            const response = await axios.post(
+                `/api/order/return_participant?participant_id=${participant_id}`,
+                {},
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+            if (response.status === 200) {
+                toast.success('Участник успешно возвращён', {
+                    position: 'top-right',
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: 'dark',
+                });
+            }
+        } catch (error) {
+            console.error('Error updating order deadline:', error);
+            toast.error('Не удалось вернуть участника', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        }
+    };
 
     const handleUpdateOrderDeadline = async (e) => {
         e.preventDefault();
@@ -549,7 +657,7 @@ const OrderActions = ({
                                                             .code === 111 ? (
                                                             <button
                                                                 onClick={() =>
-                                                                    openParticipantDeadlineModal(
+                                                                    handleReturnParticipant(
                                                                         participant.id
                                                                     )
                                                                 }
@@ -560,7 +668,7 @@ const OrderActions = ({
                                                         ) : (
                                                             <button
                                                                 onClick={() =>
-                                                                    openParticipantDeadlineModal(
+                                                                    handleUnableParticipant(
                                                                         participant.id
                                                                     )
                                                                 }
@@ -878,9 +986,7 @@ const OrderActions = ({
                                 </button>
                                 <button
                                     onClick={() =>
-                                        handleRequestSummary(
-                                            'allPersonalOrders'
-                                        )
+                                        handleDownloadAllPersonalOrders()
                                     }
                                     disabled={
                                         loadingStates['allPersonalOrders']
@@ -944,6 +1050,14 @@ const OrderActions = ({
                                     )}
                                 </button>
                             </div>
+                        </div>
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={handleDeleteOrder}
+                                className="w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200"
+                            >
+                                Удалить заказ
+                            </button>
                         </div>
                     </>
                 );

@@ -9,6 +9,7 @@ class UserDTO:
         {
             "id": fields.Integer(),
             "username": fields.String(),
-            "company": fields.String()
+            "company": fields.String(),
+            "email": fields.String()
         }
     )

@@ -60,3 +60,7 @@ class UserService:
                 'message': 'try again'
             }
             return response_object, 400
+
+    @staticmethod
+    def change_password_admin(user_id, new_password):
+        UserDBService.set_password(user_id, new_password)

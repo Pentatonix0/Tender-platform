@@ -40,9 +40,9 @@ const LoggedInUserContent = () => {
             <div className="bg-[#222224] p-8 rounded-3xl shadow-base mt-2 border border-1 border-gray-600">
                 {loading && <Loading />}
                 {orders.length === 0 && !loading && (
-                    <div className="text-center text-base text-white">
+                    <p className="text-gray-400 text-center text-sm">
                         No open orders
-                    </div>
+                    </p>
                 )}
 
                 {/* Контейнер с подложкой */}

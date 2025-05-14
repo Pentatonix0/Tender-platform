@@ -108,6 +108,12 @@ class UserDBService:
         else:
             raise
 
+    @staticmethod
+    def set_password(user_id, password):
+        user = User.query.filter_by(id=user_id).first()
+        user.password = generate_password_hash(password)
+        user.save()
+
 
 class OrderDBService:
     @staticmethod

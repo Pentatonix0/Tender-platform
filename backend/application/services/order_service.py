@@ -249,7 +249,7 @@ class OrderService:
                 if len(tmp) > 0:
                     lowest_last_price = min(tmp, key=lambda x: x.price.price)
                     OrderParticipantLastPriceDBService.set_is_the_best_price(lowest_last_price, True)
-                    recommended_price = round(lowest_last_price.price.price - 2)
+                    recommended_price = max(round(lowest_last_price.price.price - 2), 1)
                     OrderItemDBService.set_recommended_price(item.id, recommended_price)
                     for last_price in tmp:
                         if last_price.id != lowest_last_price.id:
@@ -454,7 +454,41 @@ class OrderService:
         return file_stream
 
     @staticmethod
+    def get_all_personal_orders_excel(order_id):
+        summary = {}
+        order = OrderDBService.get_order_by_id(order_id)
+        personal_orders = order.personal_orders
+        personal_summary = []
+        for personal_order in personal_orders:
+            positions = personal_order.positions
+            for position in positions:
+                position_dict = {
+                    "name": position.price.order_item.item.name,
+                    "amount": position.price.order_item.amount,
+                    "price": position.price.price
+                }
+                personal_summary.append(position_dict)
+            summary[personal_order.user.company] = personal_summary
+            personal_summary = []
+        file_stream = ExcelService.make_person_orders_excel(summary)
+        return file_stream
+
+    @staticmethod
     def get_all_order_personal_orders(order_id):
         order = OrderDBService.get_order_by_id(order_id)
         personal_orders = order.personal_orders
         return personal_orders
+
+    @staticmethod
+    def unable_participant(participant_id):
+        participant = OrderParticipantDBService.get_participant_by_id(participant_id)
+        new_status_code = 111
+        new_status = StatusDBService.get_status_by_status_code(new_status_code)
+        OrderParticipantDBService.set_participant_status_id(participant, new_status.id)
+
+    @staticmethod
+    def return_participant(participant_id):
+        participant = OrderParticipantDBService.get_participant_by_id(participant_id)
+        new_status_code = 100
+        new_status = StatusDBService.get_status_by_status_code(new_status_code)
+        OrderParticipantDBService.set_participant_status_id(participant, new_status.id)

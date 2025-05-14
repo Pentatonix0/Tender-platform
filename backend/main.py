@@ -13,17 +13,10 @@ from presentation.api.controllers.excel_controller import excel_ns
 from application.services.db_service import PrimaryInitializationDBService
 from config import ProdConfig
 
+
 app = Flask(__name__)
 app.config.from_object(ProdConfig)
-
-
-
-CORS(app, origins=[
-    "http://localhost:5173",
-    "http://109.73.206.224",
-    "http://goodprice.ae"
-], supports_credentials=True)
-
+CORS(app, origins="http://localhost:5173")
 
 db.init_app(app)
 with app.app_context():
@@ -65,5 +58,5 @@ with app.app_context():
     )
     scheduler.start()
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000)
+if __name__ == "__main__":
+    app.run()
