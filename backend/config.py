@@ -23,8 +23,8 @@ class DevConfig(Config):
 
 class ProdConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(BASE_DIR, 'prod.db')
-    DEBUG = False
-    SQLALCHEMY_ECHO = False
+    DEBUG = True
+    SQLALCHEMY_ECHO = True
     JSON_AS_ASCII = False
 
 
