@@ -15,9 +15,15 @@ from config import ProdConfig
 
 app = Flask(__name__)
 app.config.from_object(ProdConfig)
-app.config['JSON_AS_ASCII'] = False
 
-CORS(app, origins="http://localhost:5173")
+
+
+CORS(app, origins=[
+    "http://localhost:5173",
+    "http://109.73.206.224",
+    "http://goodprice.ae"
+], supports_credentials=True)
+
 
 db.init_app(app)
 with app.app_context():
@@ -59,5 +65,5 @@ with app.app_context():
     )
     scheduler.start()
 
-if __name__ == "__main__":
-    app.run()
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
