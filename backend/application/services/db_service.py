@@ -111,9 +111,8 @@ class UserDBService:
 
 class OrderDBService:
     @staticmethod
-    def create_order(title, description, permitted_providers, participating_providers, status_id, publishing_date):
-        order = Order(title=title, description=description, permitted_providers=permitted_providers,
-                      participating_providers=participating_providers, status_id=status_id,
+    def create_order(title, description, permitted_providers, status_id, publishing_date):
+        order = Order(title=title, description=description, permitted_providers=permitted_providers, status_id=status_id,
                       publishing_date=publishing_date)
         order.save()
         return order

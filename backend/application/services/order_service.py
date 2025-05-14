@@ -24,13 +24,11 @@ class OrderService:
             description = data.get("description")
             order_items = data.get("order_items")
             permitted_providers = data.get("permitted_providers")
-            participating_providers = []
             publishing_date = datetime.now()
             order_status = StatusDBService.get_status_by_status_code(200)
 
             order = OrderDBService.create_order(title=title, description=description,
                                                 permitted_providers=permitted_providers,
-                                                participating_providers=participating_providers,
                                                 status_id=order_status.id,
                                                 publishing_date=publishing_date)
 
