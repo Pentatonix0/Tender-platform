@@ -26,14 +26,16 @@ const PrivateRoute = ({ children, adminRequired = false }) => {
             });
 
             setIsValid(response.data['is_valid']);
+            console.log(1111111);
         };
 
         if (token) {
             ValidateUser();
-            setLoading(false);
         }
+        setLoading(false);
     }, [logged]);
 
+    console.log(logged);
     if (loading) {
         return null;
     }
@@ -44,6 +46,7 @@ const PrivateRoute = ({ children, adminRequired = false }) => {
     }
     // Если пользователь не авторизован, перенаправляем на страницу входа
     if (!logged) {
+        console.log(123);
         return <AuthRequiredPage />;
     }
     if ((adminRequired && !isAdmin) || (logged && !adminRequired && isAdmin)) {

@@ -146,7 +146,7 @@ const OrderDetail = () => {
                 <h1 className="text-3xl font-bold break-words text-white mb-6">
                     {order && !loading ? order.order.title : 'Loading Order...'}
                 </h1>
-                <div className="bg-[#222224] p-8 rounded-2xl shadow-lg shadow-[0px_0px_8px_0px_rgba(255,255,255,0.1)]">
+                <div className="bg-[#222224] p-8 rounded-2xl border border-1 border-gray-600 shadow-lg shadow-[0px_0px_8px_0px_rgba(255,255,255,0.1)]">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loading />

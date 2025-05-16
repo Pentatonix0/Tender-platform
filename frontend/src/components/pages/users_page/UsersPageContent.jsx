@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Loading from '../../common/universal_components/Loading';
-import { ToastContainer, toast } from 'react-toastify';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const UsersPageContent = () => {
@@ -11,6 +12,7 @@ const UsersPageContent = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // Состояние для видимости пароля
 
     const getAllUsers = async () => {
         const token = JSON.parse(localStorage.getItem('REACT_TOKEN_AUTH_KEY'));
@@ -103,6 +105,7 @@ const UsersPageContent = () => {
                 setShowModal(false);
                 setNewPassword('');
                 setErrorMessage('');
+                setShowPassword(false); // Сбрасываем видимость пароля при закрытии
                 toast.success('Пароль успешно изменен', {
                     position: 'top-right',
                     autoClose: 3000,
@@ -133,6 +136,7 @@ const UsersPageContent = () => {
         setShowModal(true);
         setNewPassword('');
         setErrorMessage('');
+        setShowPassword(false); // Сбрасываем видимость при открытии модального окна
     };
 
     const closeModal = () => {
@@ -140,6 +144,7 @@ const UsersPageContent = () => {
         setSelectedUser(null);
         setNewPassword('');
         setErrorMessage('');
+        setShowPassword(false); // Сбрасываем видимость при закрытии
     };
 
     useEffect(() => {
@@ -241,15 +246,32 @@ const UsersPageContent = () => {
                                 <h2 className="text-xl text-white mb-4">
                                     Изменить пароль для {selectedUser?.username}
                                 </h2>
-                                <input
-                                    type="password"
-                                    value={newPassword}
-                                    onChange={(e) =>
-                                        setNewPassword(e.target.value)
-                                    }
-                                    placeholder="Новый пароль"
-                                    className="w-full p-2 mb-4 bg-gray-800 text-white rounded-lg border border-gray-600"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={
+                                            showPassword ? 'text' : 'password'
+                                        }
+                                        value={newPassword}
+                                        onChange={(e) =>
+                                            setNewPassword(e.target.value)
+                                        }
+                                        placeholder="Новый пароль"
+                                        className="w-full p-2 mb-4 bg-gray-800 text-white rounded-lg border border-gray-600 pr-10" // Добавлен padding-right для иконки
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowPassword(!showPassword)
+                                        }
+                                        className="absolute pt-1 right-2 top-2 text-gray-400 hover:text-white transition duration-200"
+                                    >
+                                        {showPassword ? (
+                                            <FaEyeSlash size={20} />
+                                        ) : (
+                                            <FaEye size={20} />
+                                        )}
+                                    </button>
+                                </div>
                                 {errorMessage && (
                                     <div className="text-red-500 text-sm mb-4">
                                         {errorMessage}

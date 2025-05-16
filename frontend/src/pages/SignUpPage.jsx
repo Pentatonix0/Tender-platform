@@ -49,7 +49,7 @@ const SignUpPage = () => {
 
     return (
         <div className="min-h-screen bg-[#18181A] flex items-center justify-center">
-            <div className="mt-24 mb-24 max-w-md w-full bg-[#222224] p-8 rounded-2xl shadow-lg shadow-[0px_0px_8px_0px_rgba(255,255,255,0.1)] animate-fade-in">
+            <div className="mt-24 mb-24 max-w-md w-full bg-[#222224] p-8 rounded-2xl border border-1 border-gray-600 shadow-lg shadow-[0px_0px_8px_0px_rgba(255,255,255,0.1)] animate-fade-in">
                 <h1 className="text-3xl font-semibold text-white text-center mb-6">
                     Sign Up
                 </h1>
