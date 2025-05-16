@@ -68,3 +68,9 @@ class AuthService:
                 'message': 'Try again'
             }
             return response_object, 500
+
+    @staticmethod
+    def validate_user(username):
+        user = UserDBService.get_user_by_username(username)
+        return user is not None
+

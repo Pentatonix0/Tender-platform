@@ -139,8 +139,9 @@ class OrderService:
     @staticmethod
     def get_user_order_content(username, order_id):
         participant = OrderParticipantDBService.get_participant(username, order_id)
+        if participant and participant.status.code == 107:
+            return {}
         return participant
-
 
     @staticmethod
     def offer_price(username, data):
@@ -492,3 +493,23 @@ class OrderService:
         new_status_code = 100
         new_status = StatusDBService.get_status_by_status_code(new_status_code)
         OrderParticipantDBService.set_participant_status_id(participant, new_status.id)
+
+    @staticmethod
+    def get_non_participating_user(order_id):
+        participants_users = [prt.user for prt in OrderDBService.get_all_participants(order_id)]
+        users = UserDBService.get_all_users()
+        non_participating_users = [user for user in users if user not in participants_users]
+        return non_participating_users
+
+    @staticmethod
+    def add_participants(order_id, user_ids):
+        status = StatusDBService.get_status_by_status_code(100)
+        order = OrderDBService.get_order_by_id(order_id)
+        for user_id in user_ids:
+            participant = OrderParticipantDBService.create_order_participant(order_id, user_id, status.id)
+            for order_item in order.order_items:
+                price = OrderParticipantPriceDBService.create_order_participant_price(participant.id, order_item.id,
+                                                                                      price=None)
+                OrderParticipantLastPriceDBService.create_order_participant_last_price(participant.id, price.id,
+                                                                                       order_item.id)
+        return 0

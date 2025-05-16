@@ -169,6 +169,11 @@ class OrderDBService:
         order.save()
         return order
 
+    @staticmethod
+    def get_all_participants(order_id):
+        order = Order.query.filter_by(id=order_id).first()
+        return order.participants
+
 
 class ItemDBService:
     @staticmethod

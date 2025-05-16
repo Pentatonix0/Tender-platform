@@ -6,9 +6,12 @@ import {
     FaCloudUploadAlt,
     FaTimes,
     FaUserPlus,
+    FaCheckSquare,
+    FaSquare,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { statusDictionary } from '../../../constants/StatusDictionary';
+import { data } from 'react-router-dom';
 
 const OrderActions = ({
     title,
@@ -19,18 +22,25 @@ const OrderActions = ({
     participants,
     order_deadline,
 }) => {
-    const [loadingStates, setLoadingStates] = useState({}); // Object to track loading state per button
+    const [loadingStates, setLoadingStates] = useState({});
     const [isBiddingModalOpen, setIsBiddingModalOpen] = useState(false);
     const [isOrderDeadlineModalOpen, setIsOrderDeadlineModalOpen] =
         useState(false);
     const [isParticipantDeadlineModalOpen, setIsParticipantDeadlineModalOpen] =
         useState(false);
+    const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] =
+        useState(false); // Новое состояние для модального окна
     const [deadline, setDeadline] = useState('');
     const [deadlineError, setDeadlineError] = useState('');
     const [selectedParticipantId, setSelectedParticipantId] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
     const [isFileUploading, setIsFileUploading] = useState(false);
     const [personalOrders, setPersonalOrders] = useState([]);
+    const [nonParticipants, setNonParticipants] = useState([]); // Список пользователей, которых можно добавить
+    const [selectedUsers, setSelectedUsers] = useState([]); // Выбранные пользователи
+    const [searchQuery, setSearchQuery] = useState(''); // Поиск по компании
+    const [isLoadingNonParticipants, setIsLoadingNonParticipants] =
+        useState(false);
 
     useEffect(() => {
         const fetchAllPersonalOrders = async () => {
@@ -58,6 +68,36 @@ const OrderActions = ({
             fetchAllPersonalOrders();
         }
     }, [token]);
+
+    // Загрузка списка пользователей, которых можно добавить
+    const fetchNonParticipatingUsers = async () => {
+        setIsLoadingNonParticipants(true);
+        try {
+            const response = await axios.get(
+                `/api/order/get_non_participating_users`,
+                {
+                    params: { order_id: orderId },
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+            setNonParticipants(response.data || []);
+        } catch (error) {
+            console.error('Error fetching non-participating users:', error);
+            toast.error('Не удалось загрузить список пользователей', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } finally {
+            setIsLoadingNonParticipants(false);
+        }
+    };
 
     const setButtonLoading = (key, isLoading) => {
         setLoadingStates((prev) => ({ ...prev, [key]: isLoading }));
@@ -105,7 +145,8 @@ const OrderActions = ({
             'Вы уверены, что хотите удалить этот заказ?'
         );
         if (!confirmed) return;
-
+        const key = 'deleteOrder';
+        setButtonLoading(key, true);
         try {
             const response = await axios.delete('/api/order/delete_order', {
                 params: { id: orderId },
@@ -137,11 +178,13 @@ const OrderActions = ({
                 draggable: true,
                 theme: 'dark',
             });
+        } finally {
+            setButtonLoading(key, false);
         }
     };
 
-    const handleRequestSummary = async (action) => {
-        const key = action; // Use action as the key (e.g., 'summary' or 'allPersonalOrders')
+    const handleRequestSummary = async () => {
+        const key = 'summary';
         setButtonLoading(key, true);
         try {
             const response = await axios.get(
@@ -156,10 +199,7 @@ const OrderActions = ({
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.download =
-                action === 'summary'
-                    ? 'summary.xlsx'
-                    : 'all_personal_orders.xlsx';
+            link.download = `${title}_summary.xlsx`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -182,6 +222,7 @@ const OrderActions = ({
 
     const handleDownloadAllPersonalOrders = async () => {
         const key = 'allPersonalOrders';
+        setButtonLoading(key, true);
         try {
             const response = await axios.get(
                 `/api/order/download_all_personal_orders?order_id=${orderId}&filename=${title}`,
@@ -235,7 +276,8 @@ const OrderActions = ({
         }
 
         const isoDeadline = selectedDate.toISOString();
-
+        const key = 'confirm';
+        setButtonLoading(key, true);
         try {
             const response = await axios.post(
                 `/api/order/start_bidding?order_id=${orderId}`,
@@ -272,12 +314,74 @@ const OrderActions = ({
                 draggable: true,
                 theme: 'dark',
             });
+        } finally {
+            setButtonLoading(key, false);
         }
     };
 
-    const handleAddParticipant = () => {};
+    const handleAddParticipant = () => {
+        setIsAddParticipantModalOpen(true);
+        fetchNonParticipatingUsers(); // Загружаем список пользователей при открытии
+    };
+
+    const handleAddParticipantsSubmit = async () => {
+        if (selectedUsers.length === 0) {
+            toast.error('Выберите хотя бы одного пользователя', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+            return;
+        }
+        const key = 'addParticipants';
+        setButtonLoading(key, true);
+        try {
+            const response = await axios.post(
+                `/api/order/add_participants?order_id=${orderId}`,
+                { user_ids: selectedUsers },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+            if (response.status === 201) {
+                setIsAddParticipantModalOpen(false);
+                setSelectedUsers([]);
+                setSearchQuery('');
+                //window.location.reload();
+                toast.success('Участники успешно добавлены', {
+                    position: 'top-right',
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: 'dark',
+                });
+            }
+        } catch (error) {
+            console.error('Error adding participants:', error);
+            toast.error('Не удалось добавить участников', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } finally {
+            setButtonLoading(key, false);
+        }
+    };
+
     const handleUnableParticipant = async (participant_id) => {
-        console.log(token);
         try {
             const response = await axios.post(
                 `/api/order/unable_participant?participant_id=${participant_id}`,
@@ -313,6 +417,7 @@ const OrderActions = ({
             });
         }
     };
+
     const handleReturnParticipant = async (participant_id) => {
         try {
             const response = await axios.post(
@@ -532,9 +637,12 @@ const OrderActions = ({
         setIsBiddingModalOpen(false);
         setIsOrderDeadlineModalOpen(false);
         setIsParticipantDeadlineModalOpen(false);
+        setIsAddParticipantModalOpen(false); // Закрытие модального окна добавления участников
         setDeadline('');
         setDeadlineError('');
         setSelectedParticipantId(null);
+        setSelectedUsers([]);
+        setSearchQuery('');
     };
 
     const formatRemainingTime = (deadline) => {
@@ -565,6 +673,26 @@ const OrderActions = ({
     const openParticipantDeadlineModal = (participantId) => {
         setSelectedParticipantId(participantId);
         setIsParticipantDeadlineModalOpen(true);
+    };
+
+    // Функции для управления чекбоксами
+    const handleSelectUser = (userId) => {
+        setSelectedUsers((prev) =>
+            prev.includes(userId)
+                ? prev.filter((id) => id !== userId)
+                : [...prev, userId]
+        );
+    };
+
+    const handleSelectAll = () => {
+        const filteredUsers = nonParticipants.filter((user) =>
+            user.company.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        setSelectedUsers(filteredUsers.map((user) => user.id));
+    };
+
+    const handleDeselectAll = () => {
+        setSelectedUsers([]);
     };
 
     const renderDeadlineModal = ({ title, onSubmit }) => (
@@ -603,12 +731,125 @@ const OrderActions = ({
                         </button>
                         <button
                             type="submit"
-                            className="w-32 h-10 bg-gradient-to-r from-green-600 to-green-500 text-white text-base px-4 py-2 rounded-lg font-base hover:from-green-700 hover:to-green-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(22,163,74,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200"
+                            disabled={loadingStates['confirm']}
+                            className={`w-32 h-10 bg-gradient-to-r from-green-600 to-green-500 text-white text-base px-4 py-2 rounded-lg font-base hover:from-green-700 hover:to-green-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(22,163,74,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                                loadingStates['confirm']
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : ''
+                            }`}
+                            aria-label="Подтвердить действие"
                         >
-                            Подтвердить
+                            {loadingStates['confirm'] ? (
+                                <span>Загрузка...</span>
+                            ) : (
+                                <span>Подтвердить</span>
+                            )}
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+
+    // Модальное окно для добавления участников
+    const renderAddParticipantModal = () => (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-[#39393A] p-6 rounded-lg shadow-lg max-w-lg w-full">
+                <h2 className="text-xl font-semibold text-white mb-4">
+                    Добавить участников
+                </h2>
+                <div className="mb-4">
+                    <input
+                        type="text"
+                        placeholder="Поиск по компании..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full p-3 bg-[#222224] text-white rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    />
+                </div>
+                {isLoadingNonParticipants ? (
+                    <div className="text-white text-center">Загрузка...</div>
+                ) : nonParticipants.length === 0 ? (
+                    <div className="text-white text-center">
+                        Нет доступных пользователей для добавления
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex justify-between mb-4">
+                            <button
+                                onClick={handleSelectAll}
+                                className="flex items-center text-white px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                            >
+                                <FaCheckSquare className="mr-2" />
+                                Выделить все
+                            </button>
+                            <button
+                                onClick={handleDeselectAll}
+                                className="flex items-center text-white px-3 py-1 rounded-lg bg-gray-600 hover:bg-gray-700 transition-all duration-200"
+                            >
+                                <FaSquare className="mr-2" />
+                                Сбросить
+                            </button>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                            {nonParticipants
+                                .filter((user) =>
+                                    user.company
+                                        .toLowerCase()
+                                        .includes(searchQuery.toLowerCase())
+                                )
+                                .map((user) => (
+                                    <div
+                                        key={user.id}
+                                        className="flex items-center space-x-2"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedUsers.includes(
+                                                user.id
+                                            )}
+                                            onChange={() =>
+                                                handleSelectUser(user.id)
+                                            }
+                                            className="h-5 w-5 text-orange-400 border-gray-300 rounded focus:ring-orange-400"
+                                        />
+                                        <label className="text-white">
+                                            {user.company}
+                                        </label>
+                                    </div>
+                                ))}
+                        </div>
+                    </>
+                )}
+                <div className="flex justify-end space-x-4 mt-6">
+                    <button
+                        type="button"
+                        onClick={handleBiddingCancel}
+                        className="w-32 h-10 bg-gray-600 text-white text-base px-4 py-2 rounded-lg font-base hover:bg-gray-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(75,85,99,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200"
+                    >
+                        Отменить
+                    </button>
+                    <button
+                        onClick={handleAddParticipantsSubmit}
+                        disabled={
+                            loadingStates['addParticipants'] ||
+                            isLoadingNonParticipants
+                        }
+                        className={`w-32 h-10 bg-gradient-to-r from-green-600 to-green-500 text-white text-base px-4 py-2 rounded-lg font-base hover:from-green-700 hover:to-green-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(22,163,74,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                            loadingStates['addParticipants'] ||
+                            isLoadingNonParticipants
+                                ? 'opacity-50 cursor-not-allowed'
+                                : ''
+                        }`}
+                        aria-label="Добавить выбранных участников"
+                    >
+                        {loadingStates['addParticipants'] ? (
+                            <span>Загрузка...</span>
+                        ) : (
+                            <span>Добавить</span>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -687,15 +928,26 @@ const OrderActions = ({
                         <div>
                             <button
                                 onClick={handleAddParticipant}
-                                className="w-18 h-8 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-purple-700 hover:to-purple-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(147,51,234,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2"
+                                disabled={loadingStates['addParticipant']}
+                                className={`w-20 h-10 bg-gradient-to-r from-purple-600 to-purple-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-purple-700 hover:to-purple-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(147,51,234,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2 ${
+                                    loadingStates['addParticipant']
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                }`}
                                 aria-label="Добавить участника"
                             >
-                                <FaUserPlus className="text-xs" />
+                                {loadingStates['addParticipant'] ? (
+                                    <span>Загрузка...</span>
+                                ) : (
+                                    <>
+                                        <FaUserPlus className="text-lg" />
+                                    </>
+                                )}
                             </button>
                         </div>
                         <div className="mt-6 flex justify-start gap-4">
                             <button
-                                onClick={() => handleRequestSummary('summary')}
+                                onClick={() => handleRequestSummary()}
                                 disabled={loadingStates['summary']}
                                 className={`w-48 h-12 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(37,99,235,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2 ${
                                     loadingStates['summary']
@@ -715,19 +967,40 @@ const OrderActions = ({
                             </button>
                             <button
                                 onClick={handleStartBidding}
-                                className="w-48 h-12 bg-gradient-to-r from-green-600 to-green-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(22,163,74,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2"
+                                disabled={loadingStates['startBidding']}
+                                className={`w-48 h-12 bg-gradient-to-r from-green-600 to-green-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(22,163,74,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2 ${
+                                    loadingStates['startBidding']
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                }`}
                                 aria-label="Начать торги"
                             >
-                                <FaPlay className="text-lg" />
-                                <span>Начать торги</span>
+                                {loadingStates['startBidding'] ? (
+                                    <span>Загрузка...</span>
+                                ) : (
+                                    <>
+                                        <FaPlay className="text-lg" />
+                                        <span>Начать торги</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                         <div className="flex justify-end mt-6">
                             <button
                                 onClick={handleDeleteOrder}
-                                className="w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200"
+                                disabled={loadingStates['deleteOrder']}
+                                className={`w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                                    loadingStates['deleteOrder']
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                }`}
+                                aria-label="Удалить заказ"
                             >
-                                Удалить заказ
+                                {loadingStates['deleteOrder'] ? (
+                                    <span>Загрузка...</span>
+                                ) : (
+                                    <span>Удалить заказ</span>
+                                )}
                             </button>
                         </div>
                     </>
@@ -817,9 +1090,7 @@ const OrderActions = ({
                         <div className="mt-6 flex flex-col gap-4">
                             <div className="flex justify-start gap-4">
                                 <button
-                                    onClick={() =>
-                                        handleRequestSummary('summary')
-                                    }
+                                    onClick={() => handleRequestSummary()}
                                     disabled={loadingStates['summary']}
                                     className={`w-48 h-12 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(37,99,235,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2 ${
                                         loadingStates['summary']
@@ -882,9 +1153,19 @@ const OrderActions = ({
                         <div className="flex justify-end mt-6">
                             <button
                                 onClick={handleDeleteOrder}
-                                className="w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200"
+                                disabled={loadingStates['deleteOrder']}
+                                className={`w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                                    loadingStates['deleteOrder']
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                }`}
+                                aria-label="Удалить заказ"
                             >
-                                Удалить заказ
+                                {loadingStates['deleteOrder'] ? (
+                                    <span>Загрузка...</span>
+                                ) : (
+                                    <span>Удалить заказ</span>
+                                )}
                             </button>
                         </div>
                     </>
@@ -962,9 +1243,7 @@ const OrderActions = ({
                         <div className="mt-6 flex flex-col gap-4">
                             <div className="flex justify-start gap-4">
                                 <button
-                                    onClick={() =>
-                                        handleRequestSummary('summary')
-                                    }
+                                    onClick={() => handleRequestSummary()}
                                     disabled={loadingStates['summary']}
                                     className={`w-48 h-12 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-base font-semibold px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(37,99,235,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 flex items-center justify-center space-x-2 ${
                                         loadingStates['summary']
@@ -1054,9 +1333,19 @@ const OrderActions = ({
                         <div className="flex justify-end mt-6">
                             <button
                                 onClick={handleDeleteOrder}
-                                className="w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200"
+                                disabled={loadingStates['deleteOrder']}
+                                className={`w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                                    loadingStates['deleteOrder']
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : ''
+                                }`}
+                                aria-label="Удалить заказ"
                             >
-                                Удалить заказ
+                                {loadingStates['deleteOrder'] ? (
+                                    <span>Загрузка...</span>
+                                ) : (
+                                    <span>Удалить заказ</span>
+                                )}
                             </button>
                         </div>
                     </>
@@ -1084,6 +1373,7 @@ const OrderActions = ({
                     title: 'Изменить дедлайн участника',
                     onSubmit: handleUpdateParticipantDeadline,
                 })}
+            {isAddParticipantModalOpen && renderAddParticipantModal()}
         </>
     );
 };
