@@ -1,3 +1,5 @@
+from email.policy import default
+
 from exts import db
 from sqlalchemy import UniqueConstraint
 
@@ -115,7 +117,8 @@ class OrderParticipantPrice(BaseModel):
     order_participant_id = db.Column(db.Integer, db.ForeignKey('order_participants.id', ondelete="CASCADE"))
     order_item_id = db.Column(db.Integer, db.ForeignKey('order_items.id', ondelete="CASCADE"))
     price = db.Column(db.Numeric(10, 2), default=None)
-    last_participant_status_id = db.Column(db.Integer, db.ForeignKey('statuses.id', ondelete="CASCADE"))
+    last_participant_status_id = db.Column(db.Integer, db.ForeignKey('statuses.id', ondelete="CASCADE"), nullable=True)
+    submission_date = db.Column(db.DateTime, nullable=False, default=db.func.now())
     comment = db.Column(db.Text)
 
     # Связи с каскадным удалением
@@ -181,6 +184,7 @@ class PersonalOrderPosition(BaseModel):
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
     personal_order_id = db.Column(db.Integer, db.ForeignKey('personal_orders.id', ondelete="CASCADE"))
     price_id = db.Column(db.Integer, db.ForeignKey('order_participants_prices.id', ondelete="CASCADE"))
+    custom_amount = db.Column(db.Integer, default=None)
 
     # Связи
     personal_order = db.relationship("PersonalOrder", back_populates="positions")
@@ -203,11 +207,10 @@ class ArchivedUser(BaseModel):
     password = db.Column(db.Text)
     role = db.Column(db.Text)
     registration_date = db.Column(db.DateTime)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
-    participants = db.relationship("ArchivedOrderParticipant", back_populates="user")
-    personal_orders = db.relationship("ArchivedPersonalOrder", back_populates="user")
+    # Связи с каскадным удалением, как в User
+    participants = db.relationship("ArchivedOrderParticipant", back_populates="user", cascade="all, delete-orphan")
+    personal_orders = db.relationship("ArchivedPersonalOrder", back_populates="user", cascade="all, delete-orphan")
 
 
 class ArchivedItem(BaseModel):
@@ -215,10 +218,9 @@ class ArchivedItem(BaseModel):
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
     name = db.Column(db.Text)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
-    order_items = db.relationship("ArchivedOrderItem", back_populates="item")
+    # Связи с каскадным удалением, как в Item
+    order_items = db.relationship("ArchivedOrderItem", back_populates="item", cascade="all, delete-orphan")
 
 
 class ArchivedStatus(BaseModel):
@@ -227,9 +229,8 @@ class ArchivedStatus(BaseModel):
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
     code = db.Column(db.Integer)
     message = db.Column(db.Text)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи без каскадного удаления, как в Status
     participants = db.relationship("ArchivedOrderParticipant", back_populates="status")
     orders = db.relationship("ArchivedOrder", back_populates="status")
     prices = db.relationship("ArchivedOrderParticipantPrice", back_populates="last_participant_status")
@@ -242,70 +243,68 @@ class ArchivedOrder(BaseModel):
     publishing_date = db.Column(db.DateTime)
     title = db.Column(db.Text)
     description = db.Column(db.Text)
-    status_id = db.Column(db.Integer, db.ForeignKey('archived_statuses.id', ondelete="RESTRICT"))
+    status_id = db.Column(db.Integer, db.ForeignKey('archived_statuses.id', ondelete="CASCADE"))
     permitted_providers = db.Column(db.JSON)
     participating_providers = db.Column(db.JSON)
     deadline = db.Column(db.DateTime)
     archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в Order
     status = db.relationship("ArchivedStatus", back_populates="orders")
-    order_items = db.relationship("ArchivedOrderItem", back_populates="orders")
-    participants = db.relationship("ArchivedOrderParticipant", back_populates="order")
-    personal_orders = db.relationship("ArchivedPersonalOrder", back_populates="order")
+    order_items = db.relationship("ArchivedOrderItem", back_populates="orders", cascade="all, delete-orphan")
+    participants = db.relationship("ArchivedOrderParticipant", back_populates="order", cascade="all, delete-orphan")
+    personal_orders = db.relationship("ArchivedPersonalOrder", back_populates="order", cascade="all, delete-orphan")
 
 
 class ArchivedOrderItem(BaseModel):
     __tablename__ = 'archived_order_items'
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('archived_orders.id', ondelete="RESTRICT"))
-    item_id = db.Column(db.Integer, db.ForeignKey('archived_items.id', ondelete="RESTRICT"))
+    order_id = db.Column(db.Integer, db.ForeignKey('archived_orders.id', ondelete="CASCADE"))
+    item_id = db.Column(db.Integer, db.ForeignKey('archived_items.id', ondelete="CASCADE"))
     amount = db.Column(db.Integer)
     recommended_price = db.Column(db.Numeric(10, 2), default=None)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в OrderItem
     orders = db.relationship("ArchivedOrder", back_populates="order_items")
     item = db.relationship("ArchivedItem", back_populates="order_items")
-    participant_prices = db.relationship("ArchivedOrderParticipantPrice", back_populates="order_item")
-    last_prices = db.relationship("ArchivedOrderParticipantLastPrice", back_populates="order_item")
+    participant_prices = db.relationship("ArchivedOrderParticipantPrice", back_populates="order_item", cascade="all, delete-orphan")
+    last_prices = db.relationship("ArchivedOrderParticipantLastPrice", back_populates="order_item", cascade="all, delete-orphan")
 
 
 class ArchivedOrderParticipant(BaseModel):
     __tablename__ = 'archived_order_participants'
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('archived_users.id', ondelete="RESTRICT"))
-    order_id = db.Column(db.Integer, db.ForeignKey('archived_orders.id', ondelete="RESTRICT"))
-    status_id = db.Column(db.Integer, db.ForeignKey('archived_statuses.id', ondelete="RESTRICT"))
+    user_id = db.Column(db.Integer, db.ForeignKey('archived_users.id', ondelete="CASCADE"))
+    order_id = db.Column(db.Integer, db.ForeignKey('archived_orders.id', ondelete="CASCADE"))
+    status_id = db.Column(db.Integer, db.ForeignKey('archived_statuses.id', ondelete="CASCADE"))
     deadline = db.Column(db.DateTime)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в OrderParticipant
     user = db.relationship("ArchivedUser", back_populates="participants")
     order = db.relationship("ArchivedOrder", back_populates="participants")
     status = db.relationship("ArchivedStatus", back_populates="participants")
-    prices = db.relationship("ArchivedOrderParticipantPrice", back_populates="participant")
-    last_prices = db.relationship("ArchivedOrderParticipantLastPrice", back_populates="participant")
+    prices = db.relationship("ArchivedOrderParticipantPrice", back_populates="participant", cascade="all, delete-orphan")
+    last_prices = db.relationship("ArchivedOrderParticipantLastPrice", back_populates="participant", cascade="all, delete-orphan")
 
 
 class ArchivedOrderParticipantPrice(BaseModel):
     __tablename__ = 'archived_order_participants_prices'
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
-    order_participant_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants.id', ondelete="RESTRICT"))
-    order_item_id = db.Column(db.Integer, db.ForeignKey('archived_order_items.id', ondelete="RESTRICT"))
+    order_participant_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants.id', ondelete="CASCADE"))
+    order_item_id = db.Column(db.Integer, db.ForeignKey('archived_order_items.id', ondelete="CASCADE"))
     price = db.Column(db.Numeric(10, 2), default=None)
-    last_participant_status_id = db.Column(db.Integer, db.ForeignKey('archived_statuses.id', ondelete="RESTRICT"))
+    last_participant_status_id = db.Column(db.Integer, db.ForeignKey('archived_statuses.id', ondelete="CASCADE"),  nullable=True)
     comment = db.Column(db.Text)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    submission_date = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в OrderParticipantPrice
     participant = db.relationship("ArchivedOrderParticipant", back_populates="prices")
     order_item = db.relationship("ArchivedOrderItem", back_populates="participant_prices")
-    last_price = db.relationship("ArchivedOrderParticipantLastPrice", back_populates="price", uselist=False)
-    personal_order_positions = db.relationship("ArchivedPersonalOrderPosition", back_populates="price")
+    last_price = db.relationship("ArchivedOrderParticipantLastPrice", back_populates="price", cascade="all, delete-orphan", uselist=False)
+    personal_order_positions = db.relationship("ArchivedPersonalOrderPosition", back_populates="price", cascade="all, delete-orphan")
     last_participant_status = db.relationship("ArchivedStatus", back_populates="prices")
 
 
@@ -313,13 +312,12 @@ class ArchivedOrderParticipantLastPrice(BaseModel):
     __tablename__ = 'archived_order_participants_last_prices'
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
-    order_participant_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants.id', ondelete="RESTRICT"))
-    price_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants_prices.id', ondelete="RESTRICT"))
-    order_item_id = db.Column(db.Integer, db.ForeignKey('archived_order_items.id', ondelete="RESTRICT"))
+    order_participant_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants.id', ondelete="CASCADE"))
+    price_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants_prices.id', ondelete="CASCADE"))
+    order_item_id = db.Column(db.Integer, db.ForeignKey('archived_order_items.id', ondelete="CASCADE"))
     is_the_best_price = db.Column(db.Boolean, default=None)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в OrderParticipantLastPrice
     participant = db.relationship("ArchivedOrderParticipant", back_populates="last_prices")
     price = db.relationship("ArchivedOrderParticipantPrice", back_populates="last_price")
     order_item = db.relationship("ArchivedOrderItem", back_populates="last_prices")
@@ -329,15 +327,14 @@ class ArchivedPersonalOrder(BaseModel):
     __tablename__ = 'archived_personal_orders'
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('archived_users.id', ondelete="RESTRICT"))
-    order_id = db.Column(db.Integer, db.ForeignKey('archived_orders.id', ondelete="RESTRICT"))
+    user_id = db.Column(db.Integer, db.ForeignKey('archived_users.id', ondelete="CASCADE"))
+    order_id = db.Column(db.Integer, db.ForeignKey('archived_orders.id', ondelete="CASCADE"))
     is_empty = db.Column(db.Boolean, default=True)
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в PersonalOrder
     user = db.relationship("ArchivedUser", back_populates="personal_orders")
     order = db.relationship("ArchivedOrder", back_populates="personal_orders")
-    positions = db.relationship("ArchivedPersonalOrderPosition", back_populates="personal_order")
+    positions = db.relationship("ArchivedPersonalOrderPosition", back_populates="personal_order", cascade="all, delete-orphan")
 
     # Уникальный индекс
     __table_args__ = (
@@ -349,11 +346,11 @@ class ArchivedPersonalOrderPosition(BaseModel):
     __tablename__ = 'archived_personal_order_positions'
 
     id = db.Column(db.Integer, primary_key=True, unique=True, autoincrement=True)
-    personal_order_id = db.Column(db.Integer, db.ForeignKey('archived_personal_orders.id', ondelete="RESTRICT"))
-    price_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants_prices.id', ondelete="RESTRICT"))
-    archived_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    personal_order_id = db.Column(db.Integer, db.ForeignKey('archived_personal_orders.id', ondelete="CASCADE"))
+    price_id = db.Column(db.Integer, db.ForeignKey('archived_order_participants_prices.id', ondelete="CASCADE"))
+    custom_amount = db.Column(db.Integer, default=None)
 
-    # Relationships mirroring active model (no cascading)
+    # Связи с каскадным удалением, как в PersonalOrderPosition
     personal_order = db.relationship("ArchivedPersonalOrder", back_populates="positions")
     price = db.relationship("ArchivedOrderParticipantPrice", back_populates="personal_order_positions")
 

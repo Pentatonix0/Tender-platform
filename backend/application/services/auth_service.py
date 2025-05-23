@@ -45,13 +45,11 @@ class AuthService:
             if db_user is not None:
                 response_object = {"message": f"User with username {username} already exists"}
                 return response_object, 400
-            print(data)
             email = data.get('email')
             company = data.get("company")
             password = generate_password_hash(data.get('password'))
             role = "user"
             registration_date = datetime.now()
-            print(email)
             user = UserDBService.create_user(username, email, company, password,
                                              role, registration_date)
 

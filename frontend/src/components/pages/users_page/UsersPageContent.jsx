@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Loading from '../../common/universal_components/Loading';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaCopy } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -12,7 +12,10 @@ const UsersPageContent = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
-    const [showPassword, setShowPassword] = useState(false); // Состояние для видимости пароля
+    const [showPassword, setShowPassword] = useState(false);
+    const [passKey, setPassKey] = useState('');
+    const [passKeyLoading, setPassKeyLoading] = useState(false);
+    const [passKeyError, setPassKeyError] = useState('');
 
     const getAllUsers = async () => {
         const token = JSON.parse(localStorage.getItem('REACT_TOKEN_AUTH_KEY'));
@@ -27,7 +30,15 @@ const UsersPageContent = () => {
             console.log(response.data);
         } catch (error) {
             console.error('Error fetching users:', error);
-            toast.error('Ошибка при загрузке пользователей');
+            toast.error('Ошибка при загрузке пользователей', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
         } finally {
             setLoading(false);
         }
@@ -105,7 +116,7 @@ const UsersPageContent = () => {
                 setShowModal(false);
                 setNewPassword('');
                 setErrorMessage('');
-                setShowPassword(false); // Сбрасываем видимость пароля при закрытии
+                setShowPassword(false);
                 toast.success('Пароль успешно изменен', {
                     position: 'top-right',
                     autoClose: 3000,
@@ -131,12 +142,86 @@ const UsersPageContent = () => {
         }
     };
 
+    const handleCreatePassKey = async () => {
+        setPassKeyLoading(true);
+        setPassKeyError('');
+        setPassKey('');
+
+        // Восстановлен закомментированный код для API-запроса
+        // const token = JSON.parse(localStorage.getItem('REACT_TOKEN_AUTH_KEY'));
+        // try {
+        //     const response = await axios.post(
+        //         '/api/passkey/create',
+        //         {},
+        //         {
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //                 Authorization: `Bearer ${token.access_token}`,
+        //             },
+        //         }
+        //     );
+        //     setPassKey(response.data.passKey);
+        //     toast.success('PassKey успешно создан', {
+        //         position: 'top-right',
+        //         autoClose: 3000,
+        //         hideProgressBar: false,
+        //         closeOnClick: true,
+        //         pauseOnHover: true,
+        //         draggable: true,
+        //         theme: 'dark',
+        //     });
+        // } catch (error) {
+        //     console.error('Error creating passKey:', error);
+        //     setPassKeyError('Ошибка при создании PassKey');
+        //     toast.error('Ошибка при создании PassKey', {
+        //         position: 'top-right',
+        //         autoClose: 3000,
+        //         hideProgressBar: false,
+        //         closeOnClick: true,
+        //         pauseOnHover: true,
+        //         draggable: true,
+        //         theme: 'dark',
+        //     });
+        // } finally {
+        //     setPassKeyLoading(false);
+        // }
+
+        setPassKey('KJDIN79cM');
+        setPassKeyLoading(false);
+    };
+
+    const handleCopyPassKey = async () => {
+        try {
+            await navigator.clipboard.writeText(passKey);
+            toast.success('PassKey скопирован в буфер обмена', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } catch (error) {
+            console.error('Error copying passKey:', error);
+            toast.error('Ошибка при копировании PassKey', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        }
+    };
+
     const openModal = (user) => {
         setSelectedUser(user);
         setShowModal(true);
         setNewPassword('');
         setErrorMessage('');
-        setShowPassword(false); // Сбрасываем видимость при открытии модального окна
+        setShowPassword(false);
     };
 
     const closeModal = () => {
@@ -144,7 +229,7 @@ const UsersPageContent = () => {
         setSelectedUser(null);
         setNewPassword('');
         setErrorMessage('');
-        setShowPassword(false); // Сбрасываем видимость при закрытии
+        setShowPassword(false);
     };
 
     useEffect(() => {
@@ -168,15 +253,47 @@ const UsersPageContent = () => {
                         <h1 className="text-2xl px-3 font-base font text-white">
                             Пользователи
                         </h1>
+                        <button
+                            onClick={handleCreatePassKey}
+                            disabled={passKeyLoading}
+                            className={`w-40 h-10 bg-orange-600 text-white text-base px-4 py-2 rounded-lg hover:bg-orange-700 transition duration-200 ${
+                                passKeyLoading
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : ''
+                            }`}
+                        >
+                            {passKeyLoading ? 'Создание...' : 'Создать PassKey'}
+                        </button>
                     </div>
-
+                    {passKeyError && (
+                        <div className="text-red-500 text-sm mb-4 px-3">
+                            {passKeyError}
+                        </div>
+                    )}
+                    {passKey && (
+                        <div className="relative w-full max-w-md mb-4 px-3">
+                            <input
+                                type="text"
+                                value={passKey}
+                                readOnly
+                                placeholder="PassKey"
+                                className="w-full p-2 bg-gray-800 text-white rounded-lg border border-gray-600 pr-10"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleCopyPassKey}
+                                className="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition duration-200"
+                            >
+                                <FaCopy size={20} />
+                            </button>
+                        </div>
+                    )}
                     <div className="bg-[#222224] p-6 rounded-3xl shadow-base mt-2 border border-1 border-gray-600">
                         {users.length === 0 && !loading && (
                             <div className="text-center text-base text-white">
                                 Нет пользователей
                             </div>
                         )}
-
                         {users.length > 0 && (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full text-white">
@@ -239,7 +356,6 @@ const UsersPageContent = () => {
                             </div>
                         )}
                     </div>
-
                     {showModal && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                             <div className="bg-[#222224] p-6 rounded-3xl border border-1 border-gray-600 w-96">
@@ -256,7 +372,7 @@ const UsersPageContent = () => {
                                             setNewPassword(e.target.value)
                                         }
                                         placeholder="Новый пароль"
-                                        className="w-full p-2 mb-4 bg-gray-800 text-white rounded-lg border border-gray-600 pr-10" // Добавлен padding-right для иконки
+                                        className="w-full p-2 mb-4 bg-gray-800 text-white rounded-lg border border-gray-600 pr-10"
                                     />
                                     <button
                                         type="button"

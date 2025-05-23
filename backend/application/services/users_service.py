@@ -16,7 +16,6 @@ class UserService:
     @staticmethod
     def get_users_company_names(order_id):
         try:
-            print(order_id)
             companies = UserDBService.get_users_company_names_by_order_id(order_id)
             response_object = {
                 'status': 'success',

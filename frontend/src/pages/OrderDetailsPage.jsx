@@ -143,7 +143,7 @@ const OrderDetail = () => {
     return (
         <div className="min-h-screen bg-[#18181A] flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="w-full max-w-5xl">
-                <h1 className="text-3xl font-bold break-words text-white mb-6">
+                <h1 className="text-3xl font-bold break-words text-white mb-4">
                     {order && !loading ? order.order.title : 'Loading Order...'}
                 </h1>
                 <div className="bg-[#222224] p-8 rounded-2xl border border-1 border-gray-600 shadow-lg shadow-[0px_0px_8px_0px_rgba(255,255,255,0.1)]">
@@ -157,26 +157,48 @@ const OrderDetail = () => {
                                 onSubmit={handleSubmit(onSubmit)}
                                 className="space-y-6"
                             >
-                                <div className="relative bg-gradient-to-r from-orange-900/20 to-gray-800/80 p-6 rounded-xl border border-orange-600/30 shadow-md animate-fade-in">
-                                    <div className="flex items-start">
-                                        <FiInfo className="text-orange-500 text-2xl mr-3 mt-1 flex-shrink-0" />
+                                {order &&
+                                    !loading &&
+                                    order.order.description && (
                                         <div>
-                                            <h2 className="text-xl font-semibold text-white mb-2">
-                                                How to Proceed
-                                            </h2>
-                                            <p className="text-sm text-gray-300 leading-relaxed">
-                                                Review the order details in the
-                                                table below. Update the prices
-                                                and add comments for each item
-                                                as needed. When ready, click the{' '}
-                                                <span className="text-orange-400 font-medium">
-                                                    "Submit"
-                                                </span>{' '}
-                                                button to save your changes.
+                                            <h3 className="text-xl font-medium text-[#FFFFFF] mb-4">
+                                                Description
+                                            </h3>
+                                            <p className="text-gray-300 text-base mb-6 max-w-full break-words line-clamp-3">
+                                                {order.order.description}
                                             </p>
                                         </div>
-                                    </div>
-                                </div>
+                                    )}
+                                {order.status.code !== 102 &&
+                                    order.status.code !== 105 &&
+                                    order.status.code !== 106 && (
+                                        <div className="relative bg-gradient-to-r from-orange-900/20 to-gray-800/80 p-6 rounded-xl border border-orange-600/30 shadow-md animate-fade-in">
+                                            <div className="flex items-start">
+                                                <FiInfo className="text-orange-500 text-2xl mr-3 mt-1 flex-shrink-0" />
+                                                <div>
+                                                    <h2 className="text-xl font-semibold text-white mb-2">
+                                                        How to Proceed
+                                                    </h2>
+                                                    <p className="text-sm text-gray-300 leading-relaxed">
+                                                        Review the order details
+                                                        in the table below.
+                                                        Update the prices (use
+                                                        whole numbers or
+                                                        decimals with a dot,
+                                                        e.g., 10 or 10.99) and
+                                                        add comments for each
+                                                        item as needed. When
+                                                        ready, click the{' '}
+                                                        <span className="text-orange-400 font-medium">
+                                                            "Submit"
+                                                        </span>{' '}
+                                                        button to save your
+                                                        changes.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 <OrderDetailsTable
                                     data={order}
                                     register={register}
@@ -190,14 +212,14 @@ const OrderDetail = () => {
                                         type="submit"
                                         disabled={isSubmitting}
                                         className={`w-full sm:w-auto px-9 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white 
-                                                text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 
-                                                hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105 focus:ring-2 
-                                                focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-[#222224] 
-                                                transition-all duration-200 ${
-                                                    isSubmitting
-                                                        ? 'opacity-50 cursor-not-allowed'
-                                                        : ''
-                                                }`}
+                                            text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 
+                                            hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105 focus:ring-2 
+                                            focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-[#222224] 
+                                            transition-all duration-200 ${
+                                                isSubmitting
+                                                    ? 'opacity-50 cursor-not-allowed'
+                                                    : ''
+                                            }`}
                                         aria-label="Submit order changes"
                                     >
                                         {isSubmitting
@@ -208,9 +230,9 @@ const OrderDetail = () => {
                                     <button
                                         type="button"
                                         className={`w-full sm:w-auto bg-gradient-to-r from-orange-600 to-orange-500 text-white 
-                                                text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 
-                                                hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105
-                                                transition-all duration-200`}
+                                            text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 
+                                            hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105
+                                            transition-all duration-200`}
                                         aria-label="Submit order changes"
                                     >
                                         <Link

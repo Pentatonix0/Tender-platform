@@ -9,9 +9,9 @@ import {
     FaCheckSquare,
     FaSquare,
 } from 'react-icons/fa';
+import { FiInfo, FiAlertCircle } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { statusDictionary } from '../../../constants/StatusDictionary';
-import { data } from 'react-router-dom';
 
 const OrderActions = ({
     title,
@@ -183,6 +183,52 @@ const OrderActions = ({
         }
     };
 
+    const handleArchiveOrder = async () => {
+        const confirmed = window.confirm(
+            'Вы уверены, что хотите архивировать этот заказ?'
+        );
+        if (!confirmed) return;
+        const key = 'archiveOrder';
+
+        setButtonLoading(key, true);
+        try {
+            const response = await axios.post(
+                `/api/order/archive_order?order_id=${orderId}`,
+                {},
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+            if (response.status === 200) {
+                toast.success('Заказ успешно архивирован', {
+                    position: 'top-right',
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    theme: 'dark',
+                });
+                navigate('/');
+            }
+        } catch (error) {
+            console.error('Error archiving order:', error);
+            toast.error('Не удалось архивировать заказ', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } finally {
+            setButtonLoading(key, false);
+        }
+    };
     const handleRequestSummary = async () => {
         const key = 'summary';
         setButtonLoading(key, true);
@@ -1110,6 +1156,44 @@ const OrderActions = ({
                                 </button>
                             </div>
                             <div className="flex flex-col gap-4">
+                                <div className="relative bg-gradient-to-r from-orange-900/20 to-gray-800/80 p-6 rounded-xl border border-orange-600/30 shadow-md animate-fade-in">
+                                    <div className="flex items-start">
+                                        <FiInfo className="text-orange-500 text-2xl mr-3 mt-1 flex-shrink-0" />
+                                        <div>
+                                            <h2 className="text-xl font-semibold text-white mb-2">
+                                                Описание флагов
+                                            </h2>
+                                            <p className="text-sm text-gray-300 leading-relaxed">
+                                                <span className="text-orange-400 font-medium">
+                                                    \p
+                                                </span>{' '}
+                                                (priority) - Отдает заказ
+                                                выбранному участнику.
+                                                <br />
+                                                <span className="text-orange-400 font-medium">
+                                                    \i
+                                                </span>{' '}
+                                                (ignore) - Игнорирует
+                                                предложение участника.
+                                                <br />
+                                                <span className="text-orange-400 font-medium">
+                                                    \s + число
+                                                </span>{' '}
+                                                (select) - Передает выбраному
+                                                участнику указанное число
+                                                позиций в заказ. Имеет приоритет
+                                                над количеством товаров,
+                                                указанном в заказе. цены без
+                                                флага
+                                                <span className="text-orange-400 font-medium">
+                                                    {' '}
+                                                    \s
+                                                </span>{' '}
+                                                игнорируются
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="w-full flex items-center gap-2">
                                     <label className="flex-1 flex items-center p-3 bg-[#222224] border border-gray-300 rounded-lg cursor-pointer hover:bg-[#2a2a2c] hover:shadow-[0_0_8px_rgba(255,255,255,0.1)] transition-all duration-200 focus-within:ring-2 focus-within:ring-orange-400">
                                         <FaCloudUploadAlt className="text-orange-400 mr-2 text-lg" />
@@ -1290,6 +1374,44 @@ const OrderActions = ({
                                 </button>
                             </div>
                             <div className="flex flex-col gap-4">
+                                <div className="relative bg-gradient-to-r from-orange-900/20 to-gray-800/80 p-6 rounded-xl border border-orange-600/30 shadow-md animate-fade-in">
+                                    <div className="flex items-start">
+                                        <FiInfo className="text-orange-500 text-2xl mr-3 mt-1 flex-shrink-0" />
+                                        <div>
+                                            <h2 className="text-xl font-semibold text-white mb-2">
+                                                Описание флагов
+                                            </h2>
+                                            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+                                                <span className="text-orange-400 font-medium">
+                                                    \p
+                                                </span>{' '}
+                                                (priority) - Отдает заказ
+                                                выбранному участнику.
+                                                <br />
+                                                <span className="text-orange-400 font-medium">
+                                                    \i
+                                                </span>{' '}
+                                                (ignore) - Игнорирует
+                                                предложение участника.
+                                                <br />
+                                                <span className="text-orange-400 font-medium">
+                                                    \s + число
+                                                </span>{' '}
+                                                (select) - Передает выбраному
+                                                участнику указанное число
+                                                позиций в заказ. Имеет приоритет
+                                                над количеством товаров,
+                                                указанном в заказе. цены без
+                                                флага
+                                                <span className="text-orange-400 font-medium">
+                                                    {' '}
+                                                    \s
+                                                </span>{' '}
+                                                игнорируются
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="w-full flex items-center gap-2">
                                     <label className="flex-1 flex items-center p-3 bg-[#222224] border border-gray-300 rounded-lg cursor-pointer hover:bg-[#2a2a2c] hover:shadow-[0_0_8px_rgba(255,255,255,0.1)] transition-all duration-200 focus-within:ring-2 focus-within:ring-orange-400">
                                         <FaCloudUploadAlt className="text-orange-400 mr-2 text-lg" />
@@ -1331,22 +1453,40 @@ const OrderActions = ({
                             </div>
                         </div>
                         <div className="flex justify-end mt-6">
-                            <button
-                                onClick={handleDeleteOrder}
-                                disabled={loadingStates['deleteOrder']}
-                                className={`w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
-                                    loadingStates['deleteOrder']
-                                        ? 'opacity-50 cursor-not-allowed'
-                                        : ''
-                                }`}
-                                aria-label="Удалить заказ"
-                            >
-                                {loadingStates['deleteOrder'] ? (
-                                    <span>Загрузка...</span>
-                                ) : (
-                                    <span>Удалить заказ</span>
-                                )}
-                            </button>
+                            <div className="flex flex-col gap-4">
+                                <button
+                                    onClick={handleDeleteOrder}
+                                    disabled={loadingStates['deleteOrder']}
+                                    className={`w-30 h-8 bg-red-600 text-white text-xs px-6 rounded-lg font-base hover:bg-red-700 hover:scale-105 hover:shadow-[0_0_8px_rgba(220,38,38,0.6)] focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                                        loadingStates['deleteOrder']
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : ''
+                                    }`}
+                                    aria-label="Удалить заказ"
+                                >
+                                    {loadingStates['deleteOrder'] ? (
+                                        <span>Загрузка...</span>
+                                    ) : (
+                                        <span>Удалить заказ</span>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={handleArchiveOrder}
+                                    disabled={loadingStates['archiveOrder']}
+                                    className={`w-30 h-8 bg-yellow-500 text-white text-xs px-6 rounded-lg font-base hover:bg-yellow-600 hover:scale-105 hover:shadow-[0_0_8px_rgba(234,179,8,0.6)] focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 focus:ring-offset-[#39393A] transition-all duration-200 ${
+                                        loadingStates['archiveOrder']
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : ''
+                                    }`}
+                                    aria-label="Архивировать заказ"
+                                >
+                                    {loadingStates['archiveOrder'] ? (
+                                        <span>Загрузка...</span>
+                                    ) : (
+                                        <span>Архивировать заказ</span>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </>
                 );

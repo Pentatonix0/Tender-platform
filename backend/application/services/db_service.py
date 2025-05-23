@@ -1,3 +1,5 @@
+from pyexpat.errors import messages
+
 from application.db_models.models import *
 from werkzeug.security import generate_password_hash
 from datetime import datetime
@@ -79,7 +81,6 @@ class UserDBService:
     @staticmethod
     def check_username_id(username, user_id):
         user = User.query.filter_by(username=username).first()
-        print(username, user, user_id)
         return user.id == user_id
 
     @staticmethod
@@ -118,7 +119,8 @@ class UserDBService:
 class OrderDBService:
     @staticmethod
     def create_order(title, description, permitted_providers, status_id, publishing_date):
-        order = Order(title=title, description=description, permitted_providers=permitted_providers, status_id=status_id,
+        order = Order(title=title, description=description, permitted_providers=permitted_providers,
+                      status_id=status_id,
                       publishing_date=publishing_date)
         order.save()
         return order
@@ -248,13 +250,14 @@ class OrderParticipantDBService:
 
 class OrderParticipantPriceDBService:
     @staticmethod
-    def create_order_participant_price(order_participant_id, order_item_id, price, comment=None,
+    def create_order_participant_price(order_participant_id, order_item_id, price, submission_date, comment=None,
                                        last_participant_status_id=None):
         order_participant_price = OrderParticipantPrice(order_participant_id=order_participant_id,
                                                         order_item_id=order_item_id,
                                                         price=price,
                                                         comment=comment,
-                                                        last_participant_status_id=last_participant_status_id)
+                                                        last_participant_status_id=last_participant_status_id,
+                                                        submission_date=submission_date)
         order_participant_price.save()
         return order_participant_price
 
@@ -290,6 +293,11 @@ class StatusDBService:
         status = Status.query.filter_by(code=status_code).first()
         return status
 
+    @staticmethod
+    def get_all_statuses():
+        statuses = Status.query.all()
+        return statuses
+
 
 class PersonalOrderDBService:
     @staticmethod
@@ -311,7 +319,115 @@ class PersonalOrderDBService:
 
 class PersonalOrderPositionDBService:
     @staticmethod
-    def create_personal_order_position(personal_order_id, price_id):
-        personal_order_position = PersonalOrderPosition(personal_order_id=personal_order_id, price_id=price_id)
+    def create_personal_order_position(personal_order_id, price_id, custom_amount):
+        personal_order_position = PersonalOrderPosition(personal_order_id=personal_order_id, price_id=price_id,
+                                                        custom_amount=custom_amount)
         personal_order_position.save()
         return personal_order_position
+
+
+class ArchivedUserDBService:
+    @staticmethod
+    def try_archive_user(user):
+        archived_user = ArchivedUser.query.filter_by(username=user.username).first()
+        if not archived_user:
+            archived_user = ArchivedUser(username=user.username, email=user.email, company=user.company,
+                                         password=user.password, role=user.role,
+                                         registration_date=user.registration_date)
+            archived_user.save()
+        return archived_user
+
+
+class ArchivedOrderDBService:
+    @staticmethod
+    def archive_order(order, archived_status_id, archived_at):
+        archived_order = ArchivedOrder(title=order.title, description=order.description,
+                                       permitted_providers=order.permitted_providers,
+                                       status_id=archived_status_id,
+                                       publishing_date=order.publishing_date,
+                                       archived_at=archived_at)
+        archived_order.save()
+        return archived_order
+
+
+class ArchivedItemDBService:
+    @staticmethod
+    def try_archive_item(item):
+        archived_item = ArchivedItem.query.filter_by(name=item.name).first()
+        if not archived_item:
+            archived_item = ArchivedItem(name=item.name)
+            archived_item.save()
+        return archived_item
+
+
+class ArchivedOrderItemDBService:
+    @staticmethod
+    def archive_order_item(archived_order_id, archived_item_id, order_item):
+        archived_order_item = ArchivedOrderItem(order_id=archived_order_id, item_id=archived_item_id,
+                                                amount=order_item.amount,
+                                                recommended_price=order_item.recommended_price)
+        archived_order_item.save()
+        return archived_order_item
+
+
+class ArchivedOrderParticipantDBService:
+    @staticmethod
+    def archive_participant(archived_user_id, archived_order_id, archived_status_id):
+        archived_participant = ArchivedOrderParticipant(user_id=archived_user_id, order_id=archived_order_id,
+                                                        status_id=archived_status_id)
+        archived_participant.save()
+        return archived_participant
+
+
+class ArchivedOrderParticipantPriceDBService:
+    @staticmethod
+    def archive_price(archived_order_participant_id, archived_order_item_id, last_participant_archived_status_id,
+                      price):
+        archived_price = ArchivedOrderParticipantPrice(order_participant_id=archived_order_participant_id,
+                                                       order_item_id=archived_order_item_id,
+                                                       price=price.price,
+                                                       comment=price.comment,
+                                                       last_participant_status_id=last_participant_archived_status_id,
+                                                       submission_date=price.submission_date)
+        archived_price.save()
+        return archived_price
+
+
+class ArchivedOrderParticipantLastPriceDBService:
+    @staticmethod
+    def archive_last_price(archived_order_participant_id, archived_price_id, archived_order_item_id, last_price):
+        archived_last_price = ArchivedOrderParticipantLastPrice(order_participant_id=archived_order_participant_id,
+                                                                price_id=archived_price_id,
+                                                                order_item_id=archived_order_item_id,
+                                                                is_the_best_price=last_price.is_the_best_price)
+        archived_last_price.save()
+        return archived_last_price
+
+
+class ArchivedStatusDBService:
+    @staticmethod
+    def try_archive_status(status):
+        archived_status = ArchivedStatus.query.filter_by(code=status.code).first()
+        if not archived_status:
+            archived_status = ArchivedStatus(code=status.code, message=status.message)
+            archived_status.save()
+        return archived_status
+
+
+class ArchivedPersonalOrderDBService:
+    @staticmethod
+    def archive_personal_order(archived_user_id, archived_order_id, personal_order):
+        archived_order = ArchivedPersonalOrder(user_id=archived_user_id, order_id=archived_order_id,
+                                               is_empty=personal_order.is_empty)
+        archived_order.save()
+        return archived_order
+
+
+class ArchivedPersonalOrderPositionDBService:
+    @staticmethod
+    def archive_personal_order_position(archived_personal_order_id, archived_price_id, personal_order_position):
+        archived_personal_order_position = ArchivedPersonalOrderPosition(personal_order_id=archived_personal_order_id,
+                                                                         price_id=archived_price_id,
+                                                                         custom_amount=personal_order_position.custom_amount)
+        archived_personal_order_position.save()
+        return archived_personal_order_position

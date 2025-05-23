@@ -223,7 +223,7 @@ class CreatePersonalOrders(Resource):
                 "status": "fail",
                 "message": "Try again"
             }
-            return responce_object, 400
+            return responce_object, 500
 
 
 @order_ns.route('/get_personal_orders')
@@ -399,6 +399,7 @@ class GetNonParticipatingUsers(Resource):
             }
             return responce_object, 500
 
+
 @order_ns.route('/add_participants')
 class AddParticipants(Resource):
     @order_ns.doc(params={'id': 'Id of the order'})
@@ -428,3 +429,26 @@ class AddParticipants(Resource):
             return responce_object, 500
 
 
+@order_ns.route('/archive_order')
+class AddParticipants(Resource):
+    @order_ns.doc(params={'id': 'Id of the order'})
+    @jwt_required()
+    @admin_required
+    def post(self):
+        try:
+            order_id = request.args.get('order_id')
+            if not order_id:
+                return {"message": "Id is required"}, 400
+            OrderService.archive_order(order_id)
+            responce_object = {
+                "status": "success",
+                "message": "Order successfully archived"
+            }
+            return responce_object, 200
+        except Exception as ex:
+            print(ex)
+            responce_object = {
+                "status": "fail",
+                "message": "Try again"
+            }
+            return responce_object, 500
