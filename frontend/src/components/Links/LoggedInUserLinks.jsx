@@ -11,7 +11,7 @@ const LoggedInUserLinks = () => {
             <div className="flex-shrink-0">
                 <LogoLink />
             </div>
-            <div className="flex space-x-6 ml-6">
+            <div className="flex space-x-6 ml-4">
                 <Link
                     className={`text-white text-sm hover:underline ${
                         location.pathname === '/' ? 'underline' : ''
