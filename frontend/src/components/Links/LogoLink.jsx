@@ -6,7 +6,7 @@ const LogoLink = () => (
         <img
             src="/Logo.png"
             alt="Website Logo"
-            className="h-10 hover:scale-101" // Размер логотипа (можно настроить)
+            className="h-12 hover:scale-101" // Размер логотипа (можно настроить)
         />
     </Link>
 );
