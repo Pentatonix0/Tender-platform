@@ -128,7 +128,9 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                                         {`Recommended price: ${item.price.order_item.recommended_price}`}
                                     </div>
                                 ) : (
-                                    <></>
+                                    <div className="flex justify-center text-white text-xs">
+                                        No one have
+                                    </div>
                                 ))}
                         </div>
                     ) : (

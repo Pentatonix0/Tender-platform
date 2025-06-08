@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaTwitter, FaGithub, FaLinkedin } from 'react-icons/fa';
 
-const Footer = ({ companyName = 'Good price' }) => {
+const Footer = ({ companyName = 'Goodprice' }) => {
     const currentYear = new Date().getFullYear();
 
     return (
