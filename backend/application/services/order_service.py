@@ -140,7 +140,7 @@ class OrderService:
     @staticmethod
     def get_user_order_content(username, order_id):
         participant = OrderParticipantDBService.get_participant(username, order_id)
-        if participant and participant.status.code == 107:
+        if participant and (participant.status.code == 107 or participant.status.code == 111):
             return {}
         return participant
 
