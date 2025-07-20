@@ -8,6 +8,7 @@ class OrderService:
 
     @staticmethod
     def create_order_items(order_id, order_items):
+        print(order_items)
         items_db = []
         items_dict = {}
         order_items_db = []
@@ -16,14 +17,16 @@ class OrderService:
             if not ItemDBService.get_item_by_name(order_item_name):
                 item = Item(name=order_item_name)
                 items_db.append(item)
-            item = ItemDBService.get_item_by_name(order_item_name)
-            items_dict[order_item_name] = item
+                items_dict[order_item_name] = item
+            else:
+                item = ItemDBService.get_item_by_name(order_item_name)
+                items_dict[order_item_name] = item
         ItemDBService.save_items(items_db)
         for order_item_dict in order_items:
             order_item_name = order_item_dict["name"]
             order_item_amount = order_item_dict["amount"]
-            order_item = OrderItem(order_id=order_id, item_id=order_item_dict[order_item_name],
-                                   amount=order_item_amount)
+            order_item = OrderItem(order_id=order_id, item_id=items_dict[order_item_name].id,
+                                   amount=order_item_amount, recommended_price=None)
             order_items_db.append(order_item)
         OrderItemDBService.save_order_items(order_items_db)
 
@@ -59,8 +62,8 @@ class OrderService:
                     prices_dict[order_item.id] = price
                 OrderParticipantPriceDBService.save_order_participant_prices(list(prices_dict.values()))
                 for order_item_id in prices_dict.keys():
-                    order_participant_last_price = OrderParticipantLastPrice(participant_id=participant.id,
-                                                                             price_id=prices_dict[order_item_id],
+                    order_participant_last_price = OrderParticipantLastPrice(order_participant_id=participant.id,
+                                                                             price_id=prices_dict[order_item_id].id,
                                                                              order_item_id=order_item_id)
                     last_prices_list.append(order_participant_last_price)
                 OrderParticipantLastPriceDBService.save_order_participant_last_prices(last_prices_list)
@@ -222,7 +225,7 @@ class OrderService:
             user_id = participant.user.id
             for last_price in participant.last_prices:
                 name = last_price.price.order_item.item.name
-                if last_price.price.price:
+                if last_price.price.price or last_price.price.comment:
                     summary[name][company] = last_price.price.price
                     summary[name][f"comment_{user_id}"] = last_price.price.comment
         summary_excel = list(summary.values())
