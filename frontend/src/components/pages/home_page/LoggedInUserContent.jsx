@@ -19,7 +19,6 @@ const LoggedInUserContent = () => {
                     },
                 }
             );
-            console.log(response.data);
             setOrders(response.data); // Сохраняем полученные заказы в состояние
         } catch (error) {
             console.error('Error fetching orders:', error);

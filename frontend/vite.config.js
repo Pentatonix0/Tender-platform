@@ -15,4 +15,14 @@ export default defineConfig({
             },
         },
     },
+    build: {
+        assetsInlineLimit: 0, // Отключение инлайнинга для больших файлов
+        rollupOptions: {
+            output: {
+                entryFileNames: 'assets/[name].[hash].js', // Для JS
+                chunkFileNames: 'assets/[name].[hash].js', // Для чанков
+                assetFileNames: 'assets/[name].[hash][extname]', // Для статики (например, изображений)
+            },
+        },
+    },
 });

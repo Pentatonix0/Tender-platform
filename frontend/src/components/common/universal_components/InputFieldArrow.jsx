@@ -10,12 +10,21 @@ const InputFieldArrow = React.forwardRef(
             errors,
             validation = {},
             onKeyDown = null,
-            defaultValue = null,
+            onChange = null,
+            defaultValue = '',
+            order,
+            value_flag,
+            setOrder,
+            itemId,
             ...props
         },
         ref
     ) => {
-        const { ref: registerRef, ...restRegister } = register(id, {
+        const {
+            ref: registerRef,
+            onChange: formOnChange,
+            ...restRegister
+        } = register(id, {
             ...validation,
             setValueAs: (value) => (value === '' ? null : parseFloat(value)),
         });
@@ -26,7 +35,7 @@ const InputFieldArrow = React.forwardRef(
 
             // Разрешаем: цифры, Backspace, Delete, Tab, стрелки
             if (/[0-9]|Backspace|Delete|Tab|Arrow/.test(key)) {
-                return; // Разрешаем стандартную обработку
+                return;
             }
 
             // Разрешаем точку, но только одну и не в начале
@@ -41,14 +50,64 @@ const InputFieldArrow = React.forwardRef(
             const value = e.target.value;
 
             // Проверяем формат числа с максимум 2 знаками после точки
-            if (value === '' || /^[0-9]*\.?[0-9]{0,2}$/.test(value)) {
-                restRegister.onChange(e);
+            if (value === '' || /^[0-9]+(\.[0-9]{0,2})?$/.test(value)) {
+                formOnChange(e);
+                // if (onChange) {
+                //     onChange(e);
+                // }
+                if (order && setOrder && itemId) {
+                    setOrder((prevOrder) => {
+                        const updatedLastPrices = prevOrder.last_prices.map(
+                            (item) => {
+                                if (item.price.order_item.id === itemId) {
+                                    return {
+                                        ...item,
+                                        price: {
+                                            ...item.price,
+                                            price: value,
+                                        },
+                                    };
+                                }
+                                return item;
+                            }
+                        );
+                        return {
+                            ...prevOrder,
+                            last_prices: updatedLastPrices,
+                        };
+                    });
+                }
             } else {
                 // Если введено больше 2 знаков после точки, обрезаем
                 const parts = value.split('.');
                 if (parts.length === 2 && parts[1].length > 2) {
                     e.target.value = `${parts[0]}.${parts[1].substring(0, 2)}`;
-                    restRegister.onChange(e);
+                    formOnChange(e);
+                    if (onChange) {
+                        onChange(e);
+                    }
+                    if (order && setOrder && itemId) {
+                        setOrder((prevOrder) => {
+                            const updatedLastPrices = prevOrder.last_prices.map(
+                                (item) => {
+                                    if (item.price.order_item.id === itemId) {
+                                        return {
+                                            ...item,
+                                            price: {
+                                                ...item.price,
+                                                price: e.target.value,
+                                            },
+                                        };
+                                    }
+                                    return item;
+                                }
+                            );
+                            return {
+                                ...prevOrder,
+                                last_prices: updatedLastPrices,
+                            };
+                        });
+                    }
                 }
             }
         };
@@ -66,7 +125,9 @@ const InputFieldArrow = React.forwardRef(
                 <input
                     type={type}
                     id={id}
-                    className={`p-1 text-base w-full border rounded-md
+                    className={`p-1 text-base ${
+                        value_flag ? 'text-black' : 'text-gray-200'
+                    } w-full border rounded-md
                     ${
                         errors[id]
                             ? 'border-red-500 bg-red-100'

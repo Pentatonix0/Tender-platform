@@ -70,6 +70,14 @@ const DataTable = ({ data, showText = true }) => {
                                     ))}
                                 </tbody>
                             </table>
+                            <div className="text-right text-gray-300 mt-4 font-medium">
+                                Общее кол-во:{' '}
+                                {data.reduce(
+                                    (sum, pos) =>
+                                        sum + (parseFloat(pos.amount) || 0),
+                                    0
+                                )}
+                            </div>
                         </div>
                     )}
                 </>

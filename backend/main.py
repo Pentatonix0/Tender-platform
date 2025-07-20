@@ -11,11 +11,11 @@ from presentation.api.controllers.auth_controller import auth_ns
 from presentation.api.controllers.user_controller import users_ns
 from presentation.api.controllers.excel_controller import excel_ns
 from application.services.db_service import PrimaryInitializationDBService
-from config import DevConfig
+from config import ProdConfig
 
 
 app = Flask(__name__)
-app.config.from_object(DevConfig)
+app.config.from_object(ProdConfig)
 CORS(app, origins="http://localhost:5173")
 
 db.init_app(app)

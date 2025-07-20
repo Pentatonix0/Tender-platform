@@ -1,26 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { FiInfo, FiAlertCircle } from 'react-icons/fi';
+import { FiInfo, FiAlertCircle, FiDownload, FiUpload } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import OrderDetailsTable from '../components/pages/order_details_page/OrderDetailsTable';
 import Loading from '../components/common/universal_components/Loading';
 
+const formatPrice = (price) => {
+    if (!price && price !== 0) return '';
+
+    const str = price.toString();
+
+    // Если заканчивается на точку и не начинается с нее — вернуть как есть
+    if (str.endsWith('.') && !str.startsWith('.')) {
+        return str;
+    }
+
+    const num = parseFloat(str);
+    if (isNaN(num)) return '';
+
+    // Убираем лишние нули после запятой, оставляя максимум 2 знака
+    const fixed = num.toFixed(2).replace(/\.?0+$/, ''); // удалит .00 или .0
+
+    return fixed;
+};
+
 const OrderDetail = () => {
+    const [loadingStates, setLoadingStates] = useState({});
     const { orderId } = useParams();
     const [order, setOrder] = useState({});
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [comments, setComments] = useState({});
+    const [showEditor, setShowEditor] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState('');
+    const [isUpdatingData, setIsUpdatingData] = useState(false);
+    const fileInputRef = useRef(null);
 
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm();
+
+    const setButtonLoading = (key, isLoading) => {
+        setLoadingStates((prev) => ({ ...prev, [key]: isLoading }));
+    };
 
     useEffect(() => {
         const fetchOrderData = async () => {
@@ -38,18 +66,19 @@ const OrderDetail = () => {
                     }
                 );
                 setOrder(response.data);
-                console.log(response.data);
+                setShowEditor(
+                    response.data.status.code !== 100 &&
+                        response.data.status.code !== 101
+                );
             } catch (error) {
                 console.error('There was an error fetching order data:', error);
             } finally {
                 setLoading(false);
             }
-            console.order;
-            console.log(order == {});
         };
 
         fetchOrderData();
-    }, [orderId, navigate]);
+    }, [orderId]);
 
     const handleCommentsChange = (newComments) => {
         setComments(newComments);
@@ -69,7 +98,6 @@ const OrderDetail = () => {
                     draggable: true,
                     theme: 'dark',
                 });
-
                 navigate('/');
                 return;
             }
@@ -81,8 +109,8 @@ const OrderDetail = () => {
                 const itemId = parseInt(item.price?.order_item?.id);
                 acc[itemId] = {
                     item_id: itemId,
-                    price: parseFloat(data[`price-${itemId}`]) || null,
-                    comment: comments[itemId] || '',
+                    price: parseFloat(item.price?.price) || null,
+                    comment: item.price?.comment || '',
                 };
                 return acc;
             }, {}),
@@ -120,6 +148,161 @@ const OrderDetail = () => {
                 draggable: true,
                 theme: 'dark',
             });
+        }
+    };
+
+    const handleDownloadOrder = async () => {
+        const key = 'downloadOrder';
+        setButtonLoading(key, true);
+        try {
+            const token = JSON.parse(
+                localStorage.getItem('REACT_TOKEN_AUTH_KEY')
+            );
+            const response = await axios.get(
+                `/api/order/get_order_excel?order_id=${orderId}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                    responseType: 'blob',
+                }
+            );
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${order.order.title}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading personal order:', error);
+            toast.error('Downloading failed', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } finally {
+            setButtonLoading(key, false);
+        }
+    };
+
+    const handleUploadOrder = async () => {
+        const file = fileInputRef.current?.files[0];
+        if (!file) {
+            toast.error('Please select a file', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+            return;
+        }
+
+        const key = 'uploadOrder';
+        setButtonLoading(key, true);
+        setUploadStatus('Loading');
+        setIsUpdatingData(true);
+
+        try {
+            const token = JSON.parse(
+                localStorage.getItem('REACT_TOKEN_AUTH_KEY')
+            );
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('order_id', orderId);
+
+            const response = await axios.post(
+                '/api/excel/get_prices_from_excel',
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                }
+            );
+
+            if (response.status === 200) {
+                const newPrices = response.data;
+                let hasError = false;
+
+                const updatedOrder = {
+                    ...order,
+                    last_prices: [...order.last_prices],
+                };
+                const updatedComments = { ...comments };
+
+                newPrices.forEach((newPrice) => {
+                    const matchedItem = updatedOrder.last_prices.find(
+                        (item) =>
+                            item.price.order_item.item.name === newPrice.name
+                    );
+                    if (matchedItem) {
+                        matchedItem.price.price = formatPrice(newPrice.price);
+                        matchedItem.price.comment = newPrice.comment || '';
+                        updatedComments[matchedItem.price.order_item.id] =
+                            newPrice.comment || '';
+                    } else {
+                        hasError = true;
+                        toast.error(
+                            `Item "${newPrice.name}" not found in order`,
+                            {
+                                position: 'top-right',
+                                autoClose: 3000,
+                                hideProgressBar: false,
+                                closeOnClick: true,
+                                pauseOnHover: true,
+                                draggable: true,
+                                theme: 'dark',
+                            }
+                        );
+                    }
+                });
+
+                if (!hasError) {
+                    setUploadStatus('Prices and comments loaded');
+                    toast.success('Prices and comments successfully loaded', {
+                        position: 'top-right',
+                        autoClose: 3000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                        theme: 'dark',
+                    });
+                } else {
+                    setUploadStatus('Error while loading prices and comments');
+                }
+
+                setOrder(updatedOrder);
+                handleCommentsChange(updatedComments);
+            }
+        } catch (error) {
+            setUploadStatus('Error while loading prices and comments');
+            console.error('Error while loading prices and comments:', error);
+            toast.error('Error while loading prices and comments', {
+                position: 'top-right',
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                theme: 'dark',
+            });
+        } finally {
+            setButtonLoading(key, false);
+            setIsUpdatingData(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -199,27 +382,124 @@ const OrderDetail = () => {
                                             </div>
                                         </div>
                                     )}
-                                <OrderDetailsTable
-                                    data={order}
-                                    register={register}
-                                    errors={errors}
-                                    onCommentsChange={handleCommentsChange}
-                                />
+                                <h3 className="text-xl font-medium text-[#FFFFFF] mb-4">
+                                    Products from the order
+                                </h3>
+                                {(order.status.code === 100 ||
+                                    order.status.code === 101) && (
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowEditor(!showEditor)
+                                        }
+                                        disabled={isUpdatingData}
+                                        className={`mb-4 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-base font-medium rounded-md ${
+                                            isUpdatingData
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:from-blue-700 hover:to-blue-600 hover:shadow-[0_0_6px_rgba(59,130,246,0.6)] transition-all duration-200'
+                                        }`}
+                                    >
+                                        {showEditor
+                                            ? 'Hide Online Editor'
+                                            : 'Show Online Editor'}
+                                    </button>
+                                )}
+                                {showEditor && !isUpdatingData && (
+                                    <OrderDetailsTable
+                                        data={order}
+                                        register={register}
+                                        errors={errors}
+                                        onCommentsChange={handleCommentsChange}
+                                        order={order}
+                                        setOrder={setOrder}
+                                        formatPrice={formatPrice}
+                                    />
+                                )}
+                                {(order.status.code === 100 ||
+                                    order.status.code === 101) && (
+                                    <div>
+                                        <div>
+                                            <h3 className="text-xl font-medium text-[#FFFFFF] mb-4">
+                                                Download the order
+                                            </h3>
+                                            <button
+                                                type="button"
+                                                onClick={handleDownloadOrder}
+                                                disabled={
+                                                    loadingStates[
+                                                        'downloadOrder'
+                                                    ]
+                                                }
+                                                className={`flex items-center px-6 py-2 mb-6 bg-gradient-to-r from-green-600 to-green-500 text-white text-base font-medium rounded-md ${
+                                                    loadingStates[
+                                                        'downloadOrder'
+                                                    ]
+                                                        ? 'opacity-50 cursor-not-allowed'
+                                                        : 'hover:from-green-700 hover:to-green-600 hover:shadow-[0_0_8px_rgba(34,197,94,0.7)] hover:scale-105 focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-[#222224] transition-all duration-300'
+                                                }`}
+                                            >
+                                                <FiDownload className="mr-2 text-lg" />
+                                                {loadingStates[
+                                                    'downloadOrder'
+                                                ] ? (
+                                                    <span>Downloading...</span>
+                                                ) : (
+                                                    <span>Download</span>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        <h3 className="text-xl font-medium text-[#FFFFFF] mb-4">
+                                            Upload prices
+                                        </h3>
+                                        <div className="flex space-x-4 bg-[#2a2a2c] p-4 rounded-lg border border-gray-600 shadow-md items-center">
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                accept=".xlsx,.xls"
+                                                className="hidden"
+                                                id="file-upload"
+                                                disabled={
+                                                    loadingStates['uploadOrder']
+                                                }
+                                                onChange={handleUploadOrder}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    fileInputRef.current?.click()
+                                                }
+                                                disabled={
+                                                    loadingStates['uploadOrder']
+                                                }
+                                                className={`relative flex items-center px-6 py-3 bg-gradient-to-r from-orange-900/20 to-gray-800/80 text-white text-sm font-medium rounded-xl border border-orange-600/30 shadow-md animate-fade-in ${
+                                                    loadingStates['uploadOrder']
+                                                        ? 'opacity-50 cursor-not-allowed'
+                                                        : 'hover:from-orange-800/30 hover:to-gray-700/80 hover:shadow-lg hover:scale-105 focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-[#222224] transition-all duration-300'
+                                                }`}
+                                            >
+                                                <FiUpload className="mr-2 text-base" />
+                                                Select file
+                                            </button>
+                                            <span className="text-gray-300 text-sm">
+                                                {uploadStatus}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                                 {order.status.code !== 102 &&
                                 order.status.code !== 105 &&
                                 order.status.code !== 106 ? (
                                     <button
                                         type="submit"
-                                        disabled={isSubmitting}
-                                        className={`w-full sm:w-auto px-9 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white 
-                                            text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 
-                                            hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105 focus:ring-2 
-                                            focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-[#222224] 
-                                            transition-all duration-200 ${
-                                                isSubmitting
-                                                    ? 'opacity-50 cursor-not-allowed'
-                                                    : ''
-                                            }`}
+                                        disabled={
+                                            isSubmitting || isUpdatingData
+                                        }
+                                        className={`w-full sm:w-auto px-9 py-3 bg-gradient-to-r from-orange-600 to-orange-500 text-white text-lg font-medium rounded-md ${
+                                            isSubmitting || isUpdatingData
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:from-orange-700 hover:to-orange-600 hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105 focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-[#222224] transition-all duration-200'
+                                        }`}
                                         aria-label="Submit order changes"
                                     >
                                         {isSubmitting
@@ -229,10 +509,7 @@ const OrderDetail = () => {
                                 ) : (
                                     <button
                                         type="button"
-                                        className={`w-full sm:w-auto bg-gradient-to-r from-orange-600 to-orange-500 text-white 
-                                            text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 
-                                            hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105
-                                            transition-all duration-200`}
+                                        className="w-full sm:w-auto bg-gradient-to-r from-orange-600 to-orange-500 text-white text-lg font-medium rounded-md hover:from-orange-700 hover:to-orange-600 hover:shadow-[0_0_6px_rgba(249,115,22,0.6)] hover:scale-105 transition-all duration-200"
                                         aria-label="Submit order changes"
                                     >
                                         <Link

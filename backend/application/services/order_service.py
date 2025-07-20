@@ -1,7 +1,6 @@
 from application.services.db_service import *
 from application.services.excel_service import ExcelService
 from datetime import datetime, timezone
-import dateutil.parser
 import re
 
 
@@ -9,13 +8,24 @@ class OrderService:
 
     @staticmethod
     def create_order_items(order_id, order_items):
+        items_db = []
+        items_dict = {}
+        order_items_db = []
+        for order_item_dict in order_items:
+            order_item_name = order_item_dict["name"]
+            if not ItemDBService.get_item_by_name(order_item_name):
+                item = Item(name=order_item_name)
+                items_db.append(item)
+            item = ItemDBService.get_item_by_name(order_item_name)
+            items_dict[order_item_name] = item
+        ItemDBService.save_items(items_db)
         for order_item_dict in order_items:
             order_item_name = order_item_dict["name"]
             order_item_amount = order_item_dict["amount"]
-            if not ItemDBService.get_item_by_name(order_item_name):
-                ItemDBService.create_item(order_item_name)
-            item = ItemDBService.get_item_by_name(order_item_name)
-            OrderItemDBService.create_order_item(order_id, item.id, order_item_amount)
+            order_item = OrderItem(order_id=order_id, item_id=order_item_dict[order_item_name],
+                                   amount=order_item_amount)
+            order_items_db.append(order_item)
+        OrderItemDBService.save_order_items(order_items_db)
 
     @staticmethod
     def create_order(data):
@@ -37,12 +47,23 @@ class OrderService:
             for permitted_provider_id in permitted_providers:
                 participant = OrderParticipantDBService.create_order_participant(order.id, permitted_provider_id,
                                                                                  status.id)
+                prices_dict = {}
+                last_prices_list = []
                 for order_item in order.order_items:
-                    price = OrderParticipantPriceDBService.create_order_participant_price(participant.id, order_item.id,
-                                                                                          price=None,
-                                                                                          submission_date=publishing_date)
-                    OrderParticipantLastPriceDBService.create_order_participant_last_price(participant.id, price.id,
-                                                                                           order_item.id)
+                    price = OrderParticipantPrice(order_participant_id=participant.id,
+                                                  order_item_id=order_item.id,
+                                                  price=None,
+                                                  comment=None,
+                                                  last_participant_status_id=None,
+                                                  submission_date=publishing_date)
+                    prices_dict[order_item.id] = price
+                OrderParticipantPriceDBService.save_order_participant_prices(list(prices_dict.values()))
+                for order_item_id in prices_dict.keys():
+                    order_participant_last_price = OrderParticipantLastPrice(participant_id=participant.id,
+                                                                             price_id=prices_dict[order_item_id],
+                                                                             order_item_id=order_item_id)
+                    last_prices_list.append(order_participant_last_price)
+                OrderParticipantLastPriceDBService.save_order_participant_last_prices(last_prices_list)
             response_object = {
                 'status': 'success',
                 'message': 'Order successfully created'
@@ -156,15 +177,23 @@ class OrderService:
             if participant.status.code in [103, 104]:
                 new_code = 104
             new_status = StatusDBService.get_status_by_status_code(new_code)
+            new_prices_list = []
+            prices_pairs = []
             for last_price in participant.last_prices:
                 order_item_id = last_price.price.order_item_id
                 price_dict = prices[str(order_item_id)]
                 price = price_dict["price"]
                 comment = price_dict["comment"]
-                new_price = OrderParticipantPriceDBService.create_order_participant_price(participant.id, order_item_id,
-                                                                                          price, submission_date,
-                                                                                          comment, status.id)
-                OrderParticipantLastPriceDBService.update_last_price_price_id(last_price, new_price.id)
+                new_price = OrderParticipantPrice(order_participant_id=participant.id,
+                                                  order_item_id=order_item_id,
+                                                  price=price,
+                                                  comment=comment,
+                                                  last_participant_status_id=status.id,
+                                                  submission_date=submission_date)
+                new_prices_list.append(new_price)
+                prices_pairs.append((last_price, new_price))
+            OrderParticipantPriceDBService.save_order_participant_prices(new_prices_list)
+            OrderParticipantLastPriceDBService.update_last_prices_price_id(prices_pairs)
             OrderParticipantDBService.update_participant_status(participant, new_status.id)
             response_object = {
                 'status': 'success',
@@ -193,11 +222,28 @@ class OrderService:
             user_id = participant.user.id
             for last_price in participant.last_prices:
                 name = last_price.price.order_item.item.name
-                summary[name][company] = last_price.price.price
-                summary[name][f"comment_{user_id}"] = last_price.price.comment
+                if last_price.price.price:
+                    summary[name][company] = last_price.price.price
+                    summary[name][f"comment_{user_id}"] = last_price.price.comment
         summary_excel = list(summary.values())
         file_stream = ExcelService.make_summary_excel(summary_excel)
         return file_stream
+
+    @staticmethod
+    def get_order_items_excel(order_id):
+        try:
+            order = OrderDBService.get_order_by_id(order_id)
+            order_items_dict = [{"name": item.item.name, "amount": item.amount, "price": ''} for item in
+                                order.order_items]
+            file_stream = ExcelService.make_order_items_excel(order_items_dict)
+            return file_stream
+        except Exception as e:
+            print(e)
+            response_object = {
+                'status': 'fail',
+                'message': 'Try again'
+            }
+            return response_object, 500
 
     @staticmethod
     def update_order_meta(order_id, data):
@@ -250,17 +296,25 @@ class OrderService:
             suspended_status = StatusDBService.get_status_by_status_code(111)
             OrderDBService.set_order_status(order, new_order_status)
             items = order.order_items
+            items_prices = []
+            is_the_best_prices = []
             for item in items:
                 last_prices = item.last_prices
                 tmp = [lp for lp in last_prices if lp.price.price and lp.price.price not in [None, 0]]
                 if len(tmp) > 0:
                     lowest_last_price = min(tmp, key=lambda x: x.price.price)
-                    OrderParticipantLastPriceDBService.set_is_the_best_price(lowest_last_price, True)
+                    #OrderParticipantLastPriceDBService.set_is_the_best_price(lowest_last_price, True)
+                    #is_the_best_prices.append((lowest_last_price, True))
                     recommended_price = max(round(lowest_last_price.price.price - 2), 1)
-                    OrderItemDBService.set_recommended_price(item.id, recommended_price)
+                    items_prices.append((item, recommended_price))
+                    # OrderItemDBService.set_recommended_price(item.id, recommended_price)
+
                     for last_price in tmp:
-                        if last_price.id != lowest_last_price.id:
-                            OrderParticipantLastPriceDBService.set_is_the_best_price(last_price, False)
+                        # if last_price.id != lowest_last_price.id:
+                        #     OrderParticipantLastPriceDBService.set_is_the_best_price(last_price, False)
+                        is_the_best_prices.append((last_price, last_price.id == lowest_last_price.id))
+            OrderParticipantLastPriceDBService.set_is_the_best_prices(is_the_best_prices)
+            OrderItemDBService.set_recommended_prices(items_prices)
             for participant in order.participants:
                 if participant.status.code in [100, 111]:
                     OrderParticipantDBService.set_participant_status_id(participant, suspended_status.id)
@@ -467,11 +521,14 @@ class OrderService:
             user = UserDBService.get_user_by_company(company)
             is_empty = len(personal_orders_dict[company]) == 0
             personal_order = PersonalOrderDBService.create_personal_order(user.id, order.id, is_empty)
+            positions = []
             for game, price, custom_amount in personal_orders_dict[company]:
                 price_db = next(
                     lp for lp in item_prices_dict[game] if lp.participant.user.company == company)
-                personal_order_position = PersonalOrderPositionDBService.create_personal_order_position(
-                    personal_order.id, price_db.price.id, custom_amount)
+                personal_order_position = PersonalOrderPosition(personal_order_id=personal_order.id,
+                                                                price_id=price_db.price.id, custom_amount=custom_amount)
+                positions.append(personal_order_position)
+            PersonalOrderPositionDBService.save_personal_order_positions(positions)
             OrderService.prepare_to_personal_orders(order_id)
         OrderDBService.set_deadline(order, None)
         for participant in bidding_participants:
@@ -553,12 +610,22 @@ class OrderService:
         submission_date = datetime.now()
         for user_id in user_ids:
             participant = OrderParticipantDBService.create_order_participant(order_id, user_id, status.id)
+            prices = []
+            last_prices = []
             for order_item in order.order_items:
-                price = OrderParticipantPriceDBService.create_order_participant_price(participant.id, order_item.id,
-                                                                                      price=None,
-                                                                                      submission_date=submission_date)
-                OrderParticipantLastPriceDBService.create_order_participant_last_price(participant.id, price.id,
-                                                                                       order_item.id)
+                price = OrderParticipantPrice(order_participant_id=participant.id,
+                                              order_item_id=order_item.id,
+                                              price=None,
+                                              comment=None,
+                                              last_participant_status_id=None,
+                                              submission_date=submission_date)
+                prices.append(price)
+            OrderParticipantPriceDBService.save_order_participant_prices(prices)
+            for price in prices:
+                last_price = OrderParticipantLastPrice(order_participant_id=participant.id, price_id=price.id,
+                                                       order_item_id=price.order_item.id)
+                last_prices.append(last_price)
+            OrderParticipantLastPriceDBService.save_order_participant_last_prices(last_prices)
         return 1
 
     @staticmethod
@@ -574,12 +641,16 @@ class OrderService:
         archived_order = ArchivedOrderDBService.archive_order(order, statuses_dict[order.status.id], archived_at)
 
         order_items_dict = dict()
+        archived_order_items = []
         for order_item in order.order_items:
             item = order_item.item
             archived_item = ArchivedItemDBService.try_archive_item(item)
-            archived_order_item = ArchivedOrderItemDBService.archive_order_item(archived_order.id, archived_item.id,
-                                                                                order_item)
-            order_items_dict[order_item.id] = archived_order_item.id
+            archived_order_item = ArchivedOrderItem(order_id=archived_order.id, item_id=archived_item.id,
+                                                    amount=order_item.amount,
+                                                    recommended_price=order_item.recommended_price)
+            order_items_dict[order_item.id] = archived_order_item
+            archived_order_items.append(archived_order_item)
+        ArchivedOrderItemDBService.archive_order_items(archived_order_items)
 
         for participant in order.participants:
             user = participant.user
@@ -590,21 +661,38 @@ class OrderService:
                                                                                          archived_order.id,
                                                                                          archived_status.id)
             prices_dict = dict()
+            archived_prices = []
             for prt_price in participant.prices:
                 last_status_id = prt_price.last_participant_status_id
                 archived_price_status = statuses_dict[last_status_id] if last_status_id else None
-                archived_price = ArchivedOrderParticipantPriceDBService.archive_price(archived_participant.id,
-                                                                                      order_items_dict[
-                                                                                          prt_price.order_item.id],
-                                                                                      archived_price_status,
-                                                                                      prt_price)
-                prices_dict[prt_price.id] = archived_price.id
+                # archived_price = ArchivedOrderParticipantPrice(archived_participant.id,
+                #                                                order_items_dict[
+                #                                                    prt_price.order_item.id].id,
+                #                                                archived_price_status,
+                #                                                prt_price)
+                archived_price = ArchivedOrderParticipantPrice(order_participant_id=archived_participant.id,
+                                                               order_item_id=order_items_dict[
+                                                                   prt_price.order_item.id].id,
+                                                               price=prt_price.price,
+                                                               comment=prt_price.comment,
+                                                               last_participant_status_id=archived_price_status,
+                                                               submission_date=prt_price.submission_date)
+                prices_dict[prt_price.id] = archived_price
+                archived_prices.append(archived_price)
+            ArchivedOrderParticipantPrice.save_all(archived_prices)
 
+            archived_last_prices = []
             for prt_last_price in participant.last_prices:
-                archived_last_price = ArchivedOrderParticipantLastPriceDBService.archive_last_price(
-                    archived_participant.id, prices_dict[prt_last_price.price_id], prt_last_price.order_item.id,
-                    prt_last_price)
-
+                # archived_last_price = ArchivedOrderParticipantLastPriceDBService.archive_last_price(
+                #     archived_participant.id, prices_dict[prt_last_price.price_id], prt_last_price.order_item.id,
+                #     prt_last_price)
+                archived_last_price = ArchivedOrderParticipantLastPrice(
+                    order_participant_id=archived_participant.id,
+                    price_id=prices_dict[prt_last_price.price_id].id,
+                    order_item_id=prices_dict[prt_last_price.price_id].id,
+                    is_the_best_price=prt_last_price.is_the_best_price)
+                archived_last_prices.append(archived_last_price)
+            ArchivedOrderParticipantLastPrice.save_all(archived_last_prices)
             personal_order = next(
                 (personal_order for personal_order in user.personal_orders if personal_order.order.id == order.id),
                 None)
@@ -612,11 +700,16 @@ class OrderService:
                 archived_personal_order = ArchivedPersonalOrderDBService.archive_personal_order(archived_user.id,
                                                                                                 archived_order.id,
                                                                                                 personal_order)
-
+                archived_personal_order_positions = []
                 for position in personal_order.positions:
-                    ArchivedPersonalOrderPositionDBService.archive_personal_order_position(archived_personal_order.id,
-                                                                                           prices_dict[
-                                                                                               position.price.id],
-                                                                                           position)
+                    # ArchivedPersonalOrderPositionDBService.archive_personal_order_position(archived_personal_order.id,
+                    #                                                                        prices_dict[position.price.id],
+                    #                                                                        position)
+                    archived_personal_order_position = ArchivedPersonalOrderPosition(
+                        personal_order_id=archived_personal_order.id,
+                        price_id=prices_dict[position.price.id].id,
+                        custom_amount=position.custom_amount)
+                    archived_personal_order_positions.append(archived_personal_order_position)
+                ArchivedPersonalOrderPosition.save_all(archived_personal_order_positions)
         OrderService.delete_order(order_id)
         return 1

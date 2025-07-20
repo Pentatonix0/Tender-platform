@@ -30,6 +30,28 @@ class ExcelService:
             return response_object, 500
 
     @staticmethod
+    def read_prices(excel_file):
+        try:
+            df = pd.read_excel(excel_file)
+            order_data = []
+            for index, row in df.iterrows():
+                row_dict = row.to_dict()
+                if pd.isna(row_dict['price']):
+                    row_dict['price'] = None
+                if pd.isna(row_dict['comment']):
+                    row_dict['comment'] = None
+                order_data.append(row_dict)
+            return order_data
+        except Exception as e:
+            print(e)
+            response_object = {
+                'status': 'fail',
+                'message': 'Try again'
+            }
+            return response_object, 500
+
+
+    @staticmethod
     def make_summary_excel(summary):
         # Создаем DataFrame из данных
         df = pd.DataFrame(summary)
@@ -72,6 +94,15 @@ class ExcelService:
                         cell = worksheet.cell(row=row_idx, column=col_idx)
                         cell.fill = light_green_fill
 
+        output.seek(0)
+        return output
+    @staticmethod
+    def make_order_items_excel(order_items):
+        df = pd.DataFrame(order_items)
+        df['comment'] = ''
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Order')
         output.seek(0)
         return output
 

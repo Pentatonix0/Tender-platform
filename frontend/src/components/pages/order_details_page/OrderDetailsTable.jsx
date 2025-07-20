@@ -2,7 +2,15 @@ import React, { useRef, useEffect, useState } from 'react';
 import InputFieldArrow from '../../common/universal_components/InputFieldArrow';
 import CommentModal from './CommentModal';
 
-const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
+const OrderDetailsTable = ({
+    data,
+    register,
+    errors,
+    onCommentsChange,
+    order,
+    setOrder,
+    formatPrice,
+}) => {
     const inputRefs = useRef([]);
     const status = data.status;
     const [activeCommentItem, setActiveCommentItem] = useState(null);
@@ -45,10 +53,29 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
 
     const handleSaveComment = (comment) => {
         if (activeCommentItem) {
+            const itemId = activeCommentItem.id;
             setComments((prev) => ({
                 ...prev,
-                [activeCommentItem.id]: comment,
+                [itemId]: comment,
             }));
+            setOrder((prevOrder) => {
+                const updatedLastPrices = prevOrder.last_prices.map((item) => {
+                    if (item.price.order_item.id === itemId) {
+                        return {
+                            ...item,
+                            price: {
+                                ...item.price,
+                                comment: comment,
+                            },
+                        };
+                    }
+                    return item;
+                });
+                return {
+                    ...prevOrder,
+                    last_prices: updatedLastPrices,
+                };
+            });
         }
         setShowCommentModal(false);
     };
@@ -69,7 +96,6 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
         const isShowRecommendedPrice =
             status.code === 103 || status.code === 104;
 
-        // Условные классы для фона ячейки Price при isEditable
         const priceCellBgClass = isEditable
             ? isBestPrice === true
                 ? 'bg-[#4ADE80]/30'
@@ -77,7 +103,7 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                 ? 'bg-[#FAED27]/50'
                 : ''
             : '';
-        console.log(item);
+
         return (
             <tr key={index} className="animate-fade-in">
                 <td className="border p-2 text-gray-200 max-w-[512px]">
@@ -107,15 +133,15 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                                     },
                                 }}
                                 labelClassName="text-gray-800"
-                                defaultValue={
-                                    item.price?.price
-                                        ? parseFloat(item.price?.price)
-                                        : null
-                                }
+                                value={formatPrice(item.price?.price)}
+                                value_flag={item.price?.price}
                                 onKeyDown={(event) =>
                                     handleKeyDown(event, index)
                                 }
                                 ref={(el) => (inputRefs.current[index] = el)}
+                                order={order}
+                                setOrder={setOrder}
+                                itemId={itemId}
                             />
                             {isShowRecommendedPrice &&
                                 (isBestPrice ? (
@@ -136,7 +162,7 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
                     ) : (
                         <div className="text-gray-200">
                             {item.price?.price
-                                ? parseFloat(item.price?.price)
+                                ? formatPrice(item.price?.price)
                                 : null}
                         </div>
                     )}
@@ -185,9 +211,6 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
         case 104:
             return (
                 <div className="animate-slide-in">
-                    <h3 className="text-xl font-medium text-[#FFFFFF] mb-4">
-                        Products from the order
-                    </h3>
                     <table className="min-w-full border-collapse table-fixed">
                         <thead>
                             <tr>
@@ -226,9 +249,6 @@ const OrderDetailsTable = ({ data, register, errors, onCommentsChange }) => {
         case 106:
             return (
                 <div className="animate-slide-in">
-                    <h3 className="text-xl font-medium text-[#FFFFFF] mb-4">
-                        Products from the order
-                    </h3>
                     <table className="min-w-full border-collapse table-fixed">
                         <thead>
                             <tr>

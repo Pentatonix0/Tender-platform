@@ -194,6 +194,10 @@ class ItemDBService:
         item = Item.query.filter_by(name=item_name).first()
         return item
 
+    @staticmethod
+    def save_items(items):
+        Item.save_all(items)
+
 
 class OrderItemDBService:
     @staticmethod
@@ -212,6 +216,17 @@ class OrderItemDBService:
         order_item = OrderItem.query.filter_by(id=order_item_id).first()
         order_item.recommended_price = price
         order_item.save()
+
+    #Хз-хз
+    @staticmethod
+    def set_recommended_prices(item_prices):
+        for order_item, recommended_price in item_prices:
+            order_item.recommended_price = recommended_price
+        OrderItem.save_all([it for it, _ in item_prices])
+
+    @staticmethod
+    def save_order_items(order_items):
+        OrderItem.save_all(order_items)
 
 
 class OrderParticipantDBService:
@@ -247,6 +262,10 @@ class OrderParticipantDBService:
         participant.deadline = deadline
         participant.save()
 
+    @staticmethod
+    def save_order_participants(order_participants):
+        OrderParticipant.save_all(order_participants)
+
 
 class OrderParticipantPriceDBService:
     @staticmethod
@@ -260,6 +279,10 @@ class OrderParticipantPriceDBService:
                                                         submission_date=submission_date)
         order_participant_price.save()
         return order_participant_price
+
+    @staticmethod
+    def save_order_participant_prices(order_participant_prices):
+        OrderParticipantPrice.save_all(order_participant_prices)
 
 
 class OrderParticipantLastPriceDBService:
@@ -276,9 +299,26 @@ class OrderParticipantLastPriceDBService:
         last_price.save()
 
     @staticmethod
+    def update_last_prices_price_id(prices_pairs):
+        for last_price, new_price in prices_pairs:
+            last_price.price_id = new_price.id
+        OrderParticipantLastPrice.save_all([lp for lp, _ in prices_pairs])
+
+
+    @staticmethod
     def set_is_the_best_price(last_price, value):
         last_price.is_the_best_price = value
         last_price.save()
+
+    @staticmethod
+    def set_is_the_best_prices(is_the_best_prices):
+        for last_price, is_the_best_price in is_the_best_prices:
+            last_price.is_the_best_price = is_the_best_price
+        OrderParticipantLastPrice.save_all([lp for lp, _ in is_the_best_prices])
+
+    @staticmethod
+    def save_order_participant_last_prices(order_participant_last_prices):
+        OrderParticipantLastPrice.save_all(order_participant_last_prices)
 
 
 class StatusDBService:
@@ -316,6 +356,10 @@ class PersonalOrderDBService:
         personal_order = PersonalOrder.query.filter_by(id=personal_order_id).first()
         return personal_order
 
+    @staticmethod
+    def save_personal_orders(personal_orders):
+        PersonalOrder.save_all(personal_orders)
+
 
 class PersonalOrderPositionDBService:
     @staticmethod
@@ -324,6 +368,10 @@ class PersonalOrderPositionDBService:
                                                         custom_amount=custom_amount)
         personal_order_position.save()
         return personal_order_position
+
+    @staticmethod
+    def save_personal_order_positions(personal_order_positions):
+        PersonalOrderPosition.save_all(personal_order_positions)
 
 
 class ArchivedUserDBService:
@@ -369,6 +417,10 @@ class ArchivedOrderItemDBService:
         archived_order_item.save()
         return archived_order_item
 
+    @staticmethod
+    def archive_order_items(archived_order_items):
+        ArchivedOrderItem.save_all(archived_order_items)
+
 
 class ArchivedOrderParticipantDBService:
     @staticmethod
@@ -392,6 +444,10 @@ class ArchivedOrderParticipantPriceDBService:
         archived_price.save()
         return archived_price
 
+    @staticmethod
+    def archive_prices(archived_prices):
+        ArchivedOrderParticipantPrice.save_all(archived_prices)
+
 
 class ArchivedOrderParticipantLastPriceDBService:
     @staticmethod
@@ -402,6 +458,10 @@ class ArchivedOrderParticipantLastPriceDBService:
                                                                 is_the_best_price=last_price.is_the_best_price)
         archived_last_price.save()
         return archived_last_price
+
+    @staticmethod
+    def archive_last_prices(archived_last_prices):
+        ArchivedOrderParticipantLastPrice.save_all(archived_last_prices)
 
 
 class ArchivedStatusDBService:
@@ -431,3 +491,7 @@ class ArchivedPersonalOrderPositionDBService:
                                                                          custom_amount=personal_order_position.custom_amount)
         archived_personal_order_position.save()
         return archived_personal_order_position
+
+    @staticmethod
+    def archive_personal_order_positions(archived_personal_order_positions):
+        ArchivedPersonalOrderPosition.save_all(archived_personal_order_positions)

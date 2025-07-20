@@ -17,7 +17,6 @@ const HomePage = () => {
     // Handle to not have redirection on refresh
     useEffect(() => {
         const ValidateUser = async () => {
-            console.log(token);
             const response = await axios.get('api/auth/validate_user', {
                 headers: {
                     'Content-Type': 'application/json',

@@ -7,6 +7,11 @@ from sqlalchemy import UniqueConstraint
 class BaseModel(db.Model):
     __abstract__ = True
 
+    @classmethod
+    def save_all(cls, objects):
+        db.session.add_all(objects)
+        db.session.commit()
+
     def save(self):
         db.session.add(self)
         db.session.commit()

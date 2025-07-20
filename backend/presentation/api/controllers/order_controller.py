@@ -132,7 +132,21 @@ class GetCurrentOrderState(Resource):
             download_name='summary.xlsx',
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-
+@order_ns.route('/get_order_excel')
+class GetOrderExcel(Resource):
+    @order_ns.doc(params={'order_id': 'Id of the order'})
+    @jwt_required()
+    def get(self):
+        order_id = request.args.get('order_id')
+        if not order_id:
+            return {"message": "Id is required"}, 400
+        file_stream = OrderService.get_order_items_excel(order_id)
+        return send_file(
+            file_stream,
+            as_attachment=True,
+            download_name='order_items.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
 
 @order_ns.route('/get_all_order_participants')
 class GetAllOrderParticipants(Resource):
