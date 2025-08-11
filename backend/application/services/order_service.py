@@ -216,7 +216,7 @@ class OrderService:
         order = OrderDBService.get_order_by_id(order_id)
         active_participants = [prt for prt in order.participants if prt.status.code not in [111]]
         order_items = OrderItemDBService.get_all_order_items(order_id)
-        summary = {order_item.item.name: {'name': order_item.item.name, 'amount': order_item.amount} for
+        summary = {order_item.id: {'name': order_item.item.name, 'amount': order_item.amount} for
                    order_item in
                    order_items}
 
@@ -224,10 +224,10 @@ class OrderService:
             company = participant.user.company
             user_id = participant.user.id
             for last_price in participant.last_prices:
-                name = last_price.price.order_item.item.name
+                item_id = last_price.price.order_item.id
                 if last_price.price.price or last_price.price.comment:
-                    summary[name][company] = last_price.price.price
-                    summary[name][f"comment_{user_id}"] = last_price.price.comment
+                    summary[item_id][company] = last_price.price.price
+                    summary[item_id][f"comment_{user_id}"] = last_price.price.comment
         summary_excel = list(summary.values())
         file_stream = ExcelService.make_summary_excel(summary_excel)
         return file_stream
